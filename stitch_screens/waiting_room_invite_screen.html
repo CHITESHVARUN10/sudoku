@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Sudoku Arena - Waiting Room</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..800;1,400..800&amp;family=Inter:wght@100..900&amp;family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-primary-fixed": "#0b1b35",
+                      "on-error": "#ffffff",
+                      "on-primary": "#ffffff",
+                      "secondary-container": "#e2dfde",
+                      "inverse-primary": "#b7c7e8",
+                      "inverse-surface": "#30312e",
+                      "paper-white": "#F7F5F0",
+                      "surface-dim": "#dbdad5",
+                      "ink-blue": "#2B3A55",
+                      "tertiary": "#312200",
+                      "primary-container": "#2b3a55",
+                      "surface": "#fbf9f4",
+                      "on-secondary": "#ffffff",
+                      "on-tertiary-container": "#baa06f",
+                      "ink-black": "#1A1A1A",
+                      "surface-container-highest": "#e4e2dd",
+                      "on-surface": "#1b1c19",
+                      "on-secondary-fixed-variant": "#474746",
+                      "tertiary-fixed-dim": "#dfc38e",
+                      "secondary-fixed": "#e5e2e1",
+                      "secondary-fixed-dim": "#c8c6c5",
+                      "primary": "#15243e",
+                      "on-tertiary": "#ffffff",
+                      "surface-container": "#f0eee9",
+                      "outline": "#75777e",
+                      "on-secondary-fixed": "#1c1b1b",
+                      "surface-bright": "#fbf9f4",
+                      "tertiary-container": "#49370f",
+                      "note-gray": "#7A7875",
+                      "outline-variant": "#c5c6ce",
+                      "on-primary-fixed-variant": "#384763",
+                      "error-container": "#ffdad6",
+                      "inverse-on-surface": "#f2f1ec",
+                      "surface-container-high": "#eae8e3",
+                      "on-secondary-container": "#636262",
+                      "tertiary-fixed": "#fddfa8",
+                      "primary-fixed": "#d7e3ff",
+                      "on-primary-container": "#95a4c4",
+                      "on-tertiary-fixed-variant": "#57441b",
+                      "surface-tint": "#505f7c",
+                      "on-error-container": "#93000a",
+                      "primary-fixed-dim": "#b7c7e8",
+                      "secondary": "#5f5e5e",
+                      "surface-container-low": "#f5f3ee",
+                      "background": "#fbf9f4",
+                      "surface-container-lowest": "#ffffff",
+                      "surface-variant": "#e4e2dd",
+                      "on-background": "#1b1c19",
+                      "error-red": "#9E2A2B",
+                      "on-surface-variant": "#44474d",
+                      "error": "#ba1a1a",
+                      "on-tertiary-fixed": "#261900"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "hairline": "1px",
+                      "cell-size": "64px",
+                      "grid-unit": "4px",
+                      "margin-sm": "16px",
+                      "margin-md": "32px",
+                      "margin-lg": "64px"
+              },
+              "fontFamily": {
+                      "display-lg": [
+                              "EB Garamond"
+                      ],
+                      "label-mono": [
+                              "JetBrains Mono"
+                      ],
+                      "grid-notes": [
+                              "JetBrains Mono"
+                      ],
+                      "body-lg": [
+                              "Inter"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "headline-sm": [
+                              "EB Garamond"
+                      ],
+                      "grid-number": [
+                              "JetBrains Mono"
+                      ],
+                      "headline-md": [
+                              "EB Garamond"
+                      ]
+              },
+              "fontSize": {
+                      "display-lg": [
+                              "48px",
+                              {
+                                      "lineHeight": "56px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "label-mono": [
+                              "20px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "grid-notes": [
+                              "12px",
+                              {
+                                      "lineHeight": "12px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-sm": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "grid-number": [
+                              "28px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-md": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "fontWeight": "500"
+                              }
+                      ]
+              }
+            }
+          }
+        }
+    </script>
+<style>
+        body {
+            background-color: theme('colors.paper-white');
+            color: theme('colors.ink-black');
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .blinking-cursor {
+            animation: blink 1s step-end infinite;
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+        .border-hairline {
+            border-width: 1px;
+            border-color: theme('colors.ink-black');
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-start justify-center p-margin-lg md:pl-24 lg:pl-48">
+<main class="w-full max-w-2xl">
+<div class="mb-margin-lg w-full">
+<h3 class="font-label-mono text-label-mono uppercase tracking-widest text-note-gray mb-4">INVITE</h3>
+<div class="w-full border-t border-hairline mb-8"></div>
+<h1 class="font-display-lg text-display-lg mb-margin-md">Waiting for Player 2</h1>
+</div>
+<div class="mb-margin-lg">
+<div class="border-hairline p-margin-md inline-block mb-4">
+<span class="font-grid-number text-grid-number tracking-widest text-ink-black">SD-882-QX</span>
+</div>
+<div>
+<button class="font-body-md text-body-md text-ink-black hover:underline decoration-1 underline-offset-4 bg-transparent border-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-ink-black focus:ring-offset-2 p-1 -ml-1 transition-all">Copy Link</button>
+</div>
+</div>
+<div class="flex items-center space-x-2 mb-margin-lg mt-margin-md">
+<span class="font-label-mono text-label-mono text-ink-black">Awaiting opponent</span>
+<span class="font-label-mono text-label-mono text-ink-black blinking-cursor">_</span>
+</div>
+<div class="mt-margin-lg pt-margin-lg">
+<a class="font-body-md text-body-md text-note-gray hover:text-ink-black transition-colors underline decoration-1 underline-offset-4" href="#">Cancel</a>
+</div>
+</main>
+<script>
+        // Copy to clipboard functionality placeholder
+        document.querySelector('button').addEventListener('click', function(e) {
+            const code = 'SD-882-QX';
+            navigator.clipboard.writeText(code).then(() => {
+                const originalText = e.target.textContent;
+                e.target.textContent = 'Copied';
+                setTimeout(() => {
+                    e.target.textContent = originalText;
+                }, 2000);
+            });
+        });
+    </script>
+</body></html>

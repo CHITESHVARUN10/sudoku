@@ -1,0 +1,99 @@
+function SudokuGridArt({ className = "" }) {
+  return (
+    <svg
+      width="400"
+      height="400"
+      viewBox="0 0 400 400"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      aria-hidden="true"
+    >
+      {/* Main Grid Container */}
+      <rect
+        x="0"
+        y="0"
+        width="400"
+        height="400"
+        fill="none"
+        stroke="#2B3A55"
+        strokeWidth="2"
+      />
+
+      {/* Thin Hairlines */}
+      <g stroke="#2B3A55" strokeWidth="0.5">
+        <line x1="44.44" y1="0" x2="44.44" y2="400" />
+        <line x1="88.88" y1="0" x2="88.88" y2="400" />
+        <line x1="177.77" y1="0" x2="177.77" y2="400" />
+        <line x1="222.22" y1="0" x2="222.22" y2="400" />
+        <line x1="311.11" y1="0" x2="311.11" y2="400" />
+        <line x1="355.55" y1="0" x2="355.55" y2="400" />
+
+        <line x1="0" y1="44.44" x2="400" y2="44.44" />
+        <line x1="0" y1="88.88" x2="400" y2="88.88" />
+        <line x1="0" y1="177.77" x2="400" y2="177.77" />
+        <line x1="0" y1="222.22" x2="400" y2="222.22" />
+        <line x1="0" y1="311.11" x2="400" y2="311.11" />
+        <line x1="0" y1="355.55" x2="400" y2="355.55" />
+      </g>
+
+      {/* Thicker Region Dividers */}
+      <g stroke="#2B3A55" strokeWidth="1.5">
+        <line x1="133.33" y1="0" x2="133.33" y2="400" />
+        <line x1="266.66" y1="0" x2="266.66" y2="400" />
+        <line x1="0" y1="133.33" x2="400" y2="133.33" />
+        <line x1="0" y1="266.66" x2="400" y2="266.66" />
+      </g>
+
+      {/* Partially filled numbers */}
+      <g
+        fill="#2B3A55"
+        fontFamily="JetBrains Mono, monospace"
+        fontSize="24"
+        textAnchor="middle"
+      >
+        {/* Row 1 */}
+        <text x="22.22" y="32">5</text>
+        <text x="66.66" y="32">3</text>
+        <text x="155.55" y="32">7</text>
+        {/* Row 2 */}
+        <text x="22.22" y="76">6</text>
+        <text x="200" y="76">1</text>
+        <text x="244.44" y="76">9</text>
+        <text x="288.88" y="76">5</text>
+        {/* Row 3 */}
+        <text x="66.66" y="120">9</text>
+        <text x="111.11" y="120">8</text>
+        <text x="333.33" y="120">6</text>
+        {/* Row 4 */}
+        <text x="22.22" y="165">8</text>
+        <text x="155.55" y="165">6</text>
+        <text x="377.77" y="165">3</text>
+        {/* Row 5 */}
+        <text x="22.22" y="210">4</text>
+        <text x="111.11" y="210">8</text>
+        <text x="200" y="210">3</text>
+        <text x="288.88" y="210">1</text>
+        <text x="377.77" y="210">6</text>
+        {/* Row 6 */}
+        <text x="22.22" y="254">7</text>
+        <text x="244.44" y="254">2</text>
+        <text x="377.77" y="254">6</text>
+        {/* Row 7 */}
+        <text x="66.66" y="298">6</text>
+        <text x="288.88" y="298">2</text>
+        <text x="333.33" y="298">8</text>
+        {/* Row 8 */}
+        <text x="111.11" y="342">4</text>
+        <text x="155.55" y="342">1</text>
+        <text x="200" y="342">9</text>
+        <text x="377.77" y="342">5</text>
+        {/* Row 9 */}
+        <text x="244.44" y="386">8</text>
+        <text x="333.33" y="386">7</text>
+        <text x="377.77" y="386">9</text>
+      </g>
+    </svg>
+  );
+}
+
+export default SudokuGridArt;

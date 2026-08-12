@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Sudoku - Practice Setup</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;500;600&amp;family=Inter:wght@400;500&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "surface-dim": "#dbdad5",
+                        "primary-fixed": "#d7e3ff",
+                        "background": "#fbf9f4",
+                        "surface-variant": "#e4e2dd",
+                        "on-error-container": "#93000a",
+                        "on-tertiary": "#ffffff",
+                        "paper-white": "#F7F5F0",
+                        "on-primary-fixed": "#0b1b35",
+                        "on-tertiary-container": "#baa06f",
+                        "tertiary-fixed-dim": "#dfc38e",
+                        "note-gray": "#7A7875",
+                        "primary-fixed-dim": "#b7c7e8",
+                        "on-primary": "#ffffff",
+                        "secondary-fixed-dim": "#c8c6c5",
+                        "on-secondary-container": "#636262",
+                        "surface-tint": "#505f7c",
+                        "ink-black": "#1A1A1A",
+                        "surface-container": "#f0eee9",
+                        "on-tertiary-fixed": "#261900",
+                        "secondary-container": "#e2dfde",
+                        "inverse-primary": "#b7c7e8",
+                        "surface-container-lowest": "#ffffff",
+                        "error-red": "#9E2A2B",
+                        "on-error": "#ffffff",
+                        "primary": "#15243e",
+                        "outline-variant": "#c5c6ce",
+                        "surface-container-high": "#eae8e3",
+                        "on-tertiary-fixed-variant": "#57441b",
+                        "on-secondary-fixed": "#1c1b1b",
+                        "surface-bright": "#fbf9f4",
+                        "ink-blue": "#2B3A55",
+                        "on-primary-container": "#95a4c4",
+                        "inverse-on-surface": "#f2f1ec",
+                        "on-surface-variant": "#44474d",
+                        "surface-container-low": "#f5f3ee",
+                        "outline": "#75777e",
+                        "error-container": "#ffdad6",
+                        "primary-container": "#2b3a55",
+                        "on-secondary": "#ffffff",
+                        "tertiary-container": "#49370f",
+                        "on-primary-fixed-variant": "#384763",
+                        "error": "#ba1a1a",
+                        "inverse-surface": "#30312e",
+                        "surface-container-highest": "#e4e2dd",
+                        "on-surface": "#1b1c19",
+                        "tertiary": "#312200",
+                        "on-secondary-fixed-variant": "#474746",
+                        "on-background": "#1b1c19",
+                        "secondary": "#5f5e5e",
+                        "surface": "#fbf9f4",
+                        "tertiary-fixed": "#fddfa8",
+                        "secondary-fixed": "#e5e2e1"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0px",
+                        "lg": "0px",
+                        "xl": "0px",
+                        "full": "0px"
+                    },
+                    spacing: {
+                        "margin-sm": "16px",
+                        "grid-unit": "4px",
+                        "cell-size": "64px",
+                        "margin-md": "32px",
+                        "margin-lg": "64px",
+                        "hairline": "1px"
+                    },
+                    fontFamily: {
+                        "body-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "display-lg": ["EB Garamond"],
+                        "label-mono": ["JetBrains Mono"],
+                        "headline-sm": ["EB Garamond"],
+                        "grid-number": ["JetBrains Mono"],
+                        "grid-notes": ["JetBrains Mono"],
+                        "headline-md": ["EB Garamond"]
+                    },
+                    fontSize: {
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "label-mono": ["20px", { "lineHeight": "20px", "fontWeight": "500" }],
+                        "headline-sm": ["24px", { "lineHeight": "32px", "fontWeight": "500" }],
+                        "grid-number": ["28px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "grid-notes": ["12px", { "lineHeight": "12px", "fontWeight": "400" }],
+                        "headline-md": ["32px", { "lineHeight": "40px", "fontWeight": "500" }]
+                    },
+                    boxShadow: {
+                        'hard': '4px 4px 0px 0px rgba(26, 26, 26, 1)',
+                        'hard-sm': '2px 2px 0px 0px rgba(26, 26, 26, 1)'
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { background-color: #F7F5F0; }
+        .grid-bg {
+            background-image: linear-gradient(to right, #e2dfde 1px, transparent 1px),
+                              linear-gradient(to bottom, #e2dfde 1px, transparent 1px);
+            background-size: 32px 32px;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col font-body-md text-body-md text-ink-black antialiased selection:bg-ink-blue selection:text-paper-white relative">
+<!-- Grid Background Decoration -->
+<div class="absolute inset-0 grid-bg opacity-30 pointer-events-none z-[-1]"></div>
+<!-- Top Navigation (Shell suppressed as per intent rule for linear/transactional setup screens, but keeping a minimal brand anchor if it were a top level, here we suppress it for pure focus on setup) -->
+<main class="flex-grow flex items-center justify-center p-margin-md">
+<!-- Setup Panel -->
+<div class="bg-paper-white border border-ink-black shadow-hard max-w-md w-full p-margin-lg">
+<header class="mb-margin-md text-center">
+<h1 class="font-display-lg text-display-lg text-ink-black tracking-tight mb-2">Practice Session</h1>
+<p class="font-body-md text-body-md text-secondary">Select your logic parameters.</p>
+</header>
+<div class="space-y-margin-md">
+<!-- Difficulty Control -->
+<div>
+<label class="block font-label-mono text-label-mono text-ink-black mb-margin-sm uppercase tracking-widest text-sm text-center">Difficulty Level</label>
+<div class="flex border border-ink-black divide-x divide-ink-black">
+<!-- Easy -->
+<button class="flex-1 py-3 font-label-mono text-label-mono text-sm text-ink-black bg-paper-white hover:bg-surface-container transition-colors focus:outline-none focus:bg-surface-container">
+                            EASY
+                        </button>
+<!-- Medium (Active) -->
+<button class="flex-1 py-3 font-label-mono text-label-mono text-sm bg-ink-blue text-paper-white focus:outline-none">
+                            MEDIUM
+                        </button>
+<!-- Hard -->
+<button class="flex-1 py-3 font-label-mono text-label-mono text-sm text-ink-black bg-paper-white hover:bg-surface-container transition-colors focus:outline-none focus:bg-surface-container">
+                            HARD
+                        </button>
+<!-- Expert -->
+<button class="flex-1 py-3 font-label-mono text-label-mono text-sm text-ink-black bg-paper-white hover:bg-surface-container transition-colors focus:outline-none focus:bg-surface-container">
+                            EXPERT
+                        </button>
+</div>
+</div>
+<!-- Action -->
+<div class="pt-margin-sm">
+<button class="w-full border-2 border-ink-black bg-paper-white text-ink-black py-4 font-label-mono text-label-mono uppercase tracking-widest hover:bg-ink-black hover:text-paper-white transition-colors flex items-center justify-center gap-2 group">
+                        BEGIN PRACTICE
+                        <span class="material-symbols-outlined text-[20px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- Optional Editorial Note -->
+<div class="mt-margin-md pt-margin-md border-t border-ink-black/20 text-center">
+<p class="font-grid-notes text-grid-notes text-note-gray uppercase tracking-widest">
+                    Generated Seed: 8492A-M
+                </p>
+</div>
+</div>
+</main>
+</body></html>

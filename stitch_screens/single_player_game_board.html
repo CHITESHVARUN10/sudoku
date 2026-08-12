@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>SUDOKU - Single Player</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..800;1,400..800&amp;family=Inter:wght@100..900&amp;family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "outline-variant": "#c5c6ce",
+                        "inverse-on-surface": "#f2f1ec",
+                        "error-red": "#9E2A2B",
+                        "primary-fixed-dim": "#b7c7e8",
+                        "surface-container-high": "#eae8e3",
+                        "surface-container-lowest": "#ffffff",
+                        "on-error": "#ffffff",
+                        "surface-variant": "#e4e2dd",
+                        "background": "#fbf9f4",
+                        "on-surface-variant": "#44474d",
+                        "on-background": "#1b1c19",
+                        "surface-container": "#f0eee9",
+                        "error": "#ba1a1a",
+                        "ink-blue": "#2B3A55",
+                        "surface-container-low": "#f5f3ee",
+                        "surface-bright": "#fbf9f4",
+                        "secondary": "#5f5e5e",
+                        "ink-black": "#1A1A1A",
+                        "on-tertiary": "#ffffff",
+                        "tertiary-fixed": "#fddfa8",
+                        "on-secondary-fixed-variant": "#474746",
+                        "outline": "#75777e",
+                        "on-primary": "#ffffff",
+                        "on-primary-container": "#95a4c4",
+                        "on-secondary-fixed": "#1c1b1b",
+                        "on-tertiary-fixed": "#261900",
+                        "inverse-surface": "#30312e",
+                        "on-surface": "#1b1c19",
+                        "on-error-container": "#93000a",
+                        "surface": "#fbf9f4",
+                        "paper-white": "#F7F5F0",
+                        "on-tertiary-fixed-variant": "#57441b",
+                        "on-primary-fixed": "#0b1b35",
+                        "tertiary-fixed-dim": "#dfc38e",
+                        "on-tertiary-container": "#baa06f",
+                        "primary-fixed": "#d7e3ff",
+                        "note-gray": "#7A7875",
+                        "secondary-fixed": "#e5e2e1",
+                        "inverse-primary": "#b7c7e8",
+                        "secondary-container": "#e2dfde",
+                        "surface-container-highest": "#e4e2dd",
+                        "on-secondary": "#ffffff",
+                        "tertiary": "#312200",
+                        "surface-dim": "#dbdad5",
+                        "primary-container": "#2b3a55",
+                        "primary": "#15243e",
+                        "surface-tint": "#505f7c",
+                        "error-container": "#ffdad6",
+                        "tertiary-container": "#49370f",
+                        "on-secondary-container": "#636262",
+                        "secondary-fixed-dim": "#c8c6c5",
+                        "on-primary-fixed-variant": "#384763"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-lg": "64px",
+                        "hairline": "1px",
+                        "grid-unit": "4px",
+                        "margin-sm": "16px",
+                        "cell-size": "64px",
+                        "margin-md": "32px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["EB Garamond"],
+                        "grid-number": ["JetBrains Mono"],
+                        "grid-notes": ["JetBrains Mono"],
+                        "label-mono": ["JetBrains Mono"],
+                        "body-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-sm": ["EB Garamond"],
+                        "display-lg": ["EB Garamond"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["32px", { "lineHeight": "40px", "fontWeight": "500" }],
+                        "grid-number": ["28px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "grid-notes": ["12px", { "lineHeight": "12px", "fontWeight": "400" }],
+                        "label-mono": ["20px", { "lineHeight": "20px", "fontWeight": "500" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "headline-sm": ["24px", { "lineHeight": "32px", "fontWeight": "500" }],
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .sudoku-grid {
+            display: grid;
+            grid-template-columns: repeat(9, minmax(0, 1fr));
+            gap: 1px;
+            background-color: #1A1A1A;
+            border: 2px solid #1A1A1A;
+        }
+        .sudoku-cell {
+            background-color: #F7F5F0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            cursor: pointer;
+        }
+        /* Thicker borders for 3x3 subgrids */
+        .sudoku-cell:nth-child(3n) { border-right: 2px solid #1A1A1A; }
+        .sudoku-cell:nth-child(n+19):nth-child(-n+27),
+        .sudoku-cell:nth-child(n+46):nth-child(-n+54) { border-bottom: 2px solid #1A1A1A; }
+        .sudoku-grid .sudoku-cell:nth-child(9n) { border-right: none; }
+        
+        .sudoku-cell.selected {
+            background-color: rgba(43, 58, 85, 0.1);
+            outline: 1px solid #2B3A55;
+            outline-offset: -1px;
+            z-index: 10;
+        }
+        .sudoku-cell.fixed {
+            color: #1A1A1A;
+            font-weight: 700;
+        }
+        .sudoku-cell.user-input {
+            color: #2B3A55;
+        }
+    </style>
+</head>
+<body class="bg-paper-white text-ink-black min-h-screen flex flex-col font-body-md text-body-md antialiased selection:bg-ink-blue selection:text-paper-white">
+<!-- Top App Bar -->
+<header class="flex justify-between items-center w-full px-margin-lg h-16 bg-paper-white border-b border-ink-black sticky top-0 z-40 hidden md:flex">
+<div class="font-headline-md text-headline-md font-bold tracking-tighter text-ink-black">SUDOKU</div>
+<nav class="flex space-x-margin-md">
+<a class="font-label-mono text-label-mono text-ink-blue font-bold border-b-2 border-ink-blue hover:bg-surface-container transition-colors py-1" href="#">New Game</a>
+<a class="font-label-mono text-label-mono text-secondary hover:bg-surface-container transition-colors py-1" href="#">Challenges</a>
+<a class="font-label-mono text-label-mono text-secondary hover:bg-surface-container transition-colors py-1" href="#">Archive</a>
+</nav>
+<div class="flex space-x-4">
+<button class="hover:bg-surface-container p-2 transition-colors"><span class="material-symbols-outlined">settings</span></button>
+<button class="hover:bg-surface-container p-2 transition-colors"><span class="material-symbols-outlined">help</span></button>
+</div>
+</header>
+<div class="flex flex-1 overflow-hidden">
+<!-- Side Navigation (Desktop) -->
+<aside class="hidden md:flex flex-col h-full w-64 bg-paper-white border-r border-ink-black p-margin-sm space-y-grid-unit">
+<div class="mb-margin-md px-4 pt-4">
+<h2 class="font-headline-sm text-headline-sm font-bold text-ink-black">Logic Master</h2>
+<p class="font-body-md text-body-md text-secondary">Expert Level</p>
+</div>
+<nav class="flex flex-col space-y-1">
+<a class="flex items-center space-x-4 px-4 py-3 bg-ink-blue text-paper-white font-bold transition-all duration-150 ease-in-out" href="#">
+<span class="material-symbols-outlined">add_box</span>
+<span class="font-label-mono text-label-mono">New Game</span>
+</a>
+<a class="flex items-center space-x-4 px-4 py-3 text-ink-black hover:bg-surface-container-high transition-all duration-150 ease-in-out" href="#">
+<span class="material-symbols-outlined">calendar_today</span>
+<span class="font-label-mono text-label-mono">Daily</span>
+</a>
+<a class="flex items-center space-x-4 px-4 py-3 text-ink-black hover:bg-surface-container-high transition-all duration-150 ease-in-out" href="#">
+<span class="material-symbols-outlined">inventory_2</span>
+<span class="font-label-mono text-label-mono">Archive</span>
+</a>
+<a class="flex items-center space-x-4 px-4 py-3 text-ink-black hover:bg-surface-container-high transition-all duration-150 ease-in-out" href="#">
+<span class="material-symbols-outlined">leaderboard</span>
+<span class="font-label-mono text-label-mono">Statistics</span>
+</a>
+</nav>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 overflow-y-auto p-4 md:p-margin-lg flex justify-center items-start">
+<div class="w-full max-w-4xl flex flex-col lg:flex-row gap-margin-lg">
+<!-- Game Board Column -->
+<div class="flex-1 flex flex-col max-w-xl mx-auto lg:mx-0 w-full">
+<!-- Game Info Header -->
+<div class="flex justify-between items-end mb-4 border-b border-ink-black pb-2">
+<div class="font-headline-sm text-headline-sm tracking-wider uppercase">EXPERT</div>
+<div class="font-grid-number text-grid-number">12:45</div>
+<div class="font-body-lg text-body-lg">0/3</div>
+</div>
+<!-- Sudoku Grid -->
+<div class="sudoku-grid aspect-square w-full font-grid-number text-grid-number mb-margin-md">
+<!-- Row 1 -->
+<div class="sudoku-cell fixed">5</div>
+<div class="sudoku-cell fixed">3</div>
+<div class="sudoku-cell"></div>
+<div class="sudoku-cell fixed">7</div>
+<div class="sudoku-cell"></div>
+<div class="sudoku-cell"></div>
+<div class="sudoku-cell"></div>
+<div class="sudoku-cell"></div>
+<div class="sudoku-cell"></div>
+<!-- Row 2 -->
+<div class="sudoku-cell fixed">6</div>
+<div class="sudoku-cell"></div>
+<div class="sudoku-cell"></div>
+<div class="sudoku-cell"></div>
+<div class="sudoku-cell fixed">1</div>
+<div class="sudoku-cell fixed">9</div>
+<div class="sudoku-cell fixed">5</div>
+<div class="sudoku-cell"></div>
+<div class="sudoku-cell"></div>
+<!-- Row 3 -->
+<div class="sudoku-cell"></div>
+<div class="sudoku-cell fixed">9</div>
+<div class="sudoku-cell fixed">8</div>
+<div class="sudoku-cell"></div>
+<div class="sudoku-cell"></div>
+<div class="sudoku-cell"></div>
+<div class="sudoku-cell"></div>
+<div class="sudoku-cell fixed">6</div>
+<div class="sudoku-cell"></div>
+<!-- Row 4 -->
+<div class="sudoku-cell fixed">8</div>
+<div class="sudoku-cell"></div>
+<div class="sudoku-cell"></div>
+<div class="sudoku-cell fixed">6</div>
+<div class="sudoku-cell"></div>
+<div class="sudoku-cell"></div>
+<div class="sudoku-cell"></div>
+<div class="sudoku-cell"></div>
+<div class="sudoku-cell fixed">3</div>
+<!-- Row 5 -->
+<div class="sudoku-cell fixed">4</div>
+<div class="sudoku-cell"></div>
+<div class="sudoku-cell fixed">8</div>
+<div class="sudoku-cell"></div>
+<div class="sudoku-cell fixed">3</div>
+<div class="sudoku-cell"></div>
+<div class="sudoku-cell fixed">1</div>
+<div class="sudoku-cell selected"></div>
+<div class="sudoku-cell fixed">6</div>
+<!-- Row 6 -->
+<div class="sudoku-cell fixed">7</div>
+<div class="sudoku-cell"></div>
+<div class="sudoku-cell"></div>
+<div class="sudoku-cell"></div>
+<div class="sudoku-cell"></div>
+<div class="sudoku-cell fixed">2</div>
+<div class="sudoku-cell"></div>
+<div class="sudoku-cell"></div>
+<div class="sudoku-cell fixed">6</div>
+<!-- Row 7 -->
+<div class="sudoku-cell"></div>
+<div class="sudoku-cell fixed">6</div>
+<div class="sudoku-cell"></div>
+<div class="sudoku-cell"></div>
+<div class="sudoku-cell"></div>
+<div class="sudoku-cell"></div>
+<div class="sudoku-cell fixed">2</div>
+<div class="sudoku-cell fixed">8</div>
+<div class="sudoku-cell"></div>
+<!-- Row 8 -->
+<div class="sudoku-cell"></div>
+<div class="sudoku-cell"></div>
+<div class="sudoku-cell fixed">4</div>
+<div class="sudoku-cell fixed">1</div>
+<div class="sudoku-cell fixed">9</div>
+<div class="sudoku-cell"></div>
+<div class="sudoku-cell"></div>
+<div class="sudoku-cell"></div>
+<div class="sudoku-cell fixed">5</div>
+<!-- Row 9 -->
+<div class="sudoku-cell"></div>
+<div class="sudoku-cell"></div>
+<div class="sudoku-cell"></div>
+<div class="sudoku-cell"></div>
+<div class="sudoku-cell"></div>
+<div class="sudoku-cell fixed">8</div>
+<div class="sudoku-cell"></div>
+<div class="sudoku-cell fixed">7</div>
+<div class="sudoku-cell fixed">9</div>
+</div>
+</div>
+<!-- Controls Column -->
+<div class="flex flex-col w-full lg:w-64 space-y-margin-md pt-10">
+<!-- Action Links -->
+<div class="flex flex-row lg:flex-col justify-around lg:justify-start gap-4">
+<button class="font-body-lg text-body-lg text-ink-black hover:border-b hover:border-ink-black pb-0.5 self-start transition-all">Undo</button>
+<button class="font-body-lg text-body-lg text-ink-black hover:border-b hover:border-ink-black pb-0.5 self-start transition-all">Hint</button>
+</div>
+<!-- Notes Toggle -->
+<div class="flex items-center justify-between border-y border-ink-black py-4">
+<span class="font-headline-sm text-headline-sm">Notes</span>
+<button class="font-label-mono text-label-mono hover:text-ink-blue transition-colors">
+                            [OFF]
+                        </button>
+</div>
+<!-- Number Pad -->
+<div class="grid grid-cols-3 gap-px bg-ink-black border border-ink-black">
+<button class="bg-paper-white h-16 flex items-center justify-center font-grid-number text-grid-number hover:bg-ink-black hover:text-paper-white transition-colors">1</button>
+<button class="bg-paper-white h-16 flex items-center justify-center font-grid-number text-grid-number hover:bg-ink-black hover:text-paper-white transition-colors">2</button>
+<button class="bg-paper-white h-16 flex items-center justify-center font-grid-number text-grid-number hover:bg-ink-black hover:text-paper-white transition-colors">3</button>
+<button class="bg-paper-white h-16 flex items-center justify-center font-grid-number text-grid-number hover:bg-ink-black hover:text-paper-white transition-colors">4</button>
+<button class="bg-paper-white h-16 flex items-center justify-center font-grid-number text-grid-number hover:bg-ink-black hover:text-paper-white transition-colors">5</button>
+<button class="bg-paper-white h-16 flex items-center justify-center font-grid-number text-grid-number hover:bg-ink-black hover:text-paper-white transition-colors">6</button>
+<button class="bg-paper-white h-16 flex items-center justify-center font-grid-number text-grid-number hover:bg-ink-black hover:text-paper-white transition-colors">7</button>
+<button class="bg-paper-white h-16 flex items-center justify-center font-grid-number text-grid-number hover:bg-ink-black hover:text-paper-white transition-colors">8</button>
+<button class="bg-paper-white h-16 flex items-center justify-center font-grid-number text-grid-number hover:bg-ink-black hover:text-paper-white transition-colors">9</button>
+</div>
+</div>
+</div>
+</main>
+</div>
+<!-- Bottom Navigation (Mobile) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full flex justify-around items-center py-2 bg-paper-white border-t border-ink-black z-50">
+<a class="flex flex-col items-center justify-center text-ink-blue font-bold active:bg-surface-container-high scale-95 duration-75 p-2" href="#">
+<span class="material-symbols-outlined">grid_on</span>
+<span class="font-grid-notes text-grid-notes mt-1">Play</span>
+</a>
+<a class="flex flex-col items-center justify-center text-secondary active:bg-surface-container-high scale-95 duration-75 p-2" href="#">
+<span class="material-symbols-outlined">event</span>
+<span class="font-grid-notes text-grid-notes mt-1">Daily</span>
+</a>
+<a class="flex flex-col items-center justify-center text-secondary active:bg-surface-container-high scale-95 duration-75 p-2" href="#">
+<span class="material-symbols-outlined">bar_chart</span>
+<span class="font-grid-notes text-grid-notes mt-1">Stats</span>
+</a>
+<a class="flex flex-col items-center justify-center text-secondary active:bg-surface-container-high scale-95 duration-75 p-2" href="#">
+<span class="material-symbols-outlined">account_circle</span>
+<span class="font-grid-notes text-grid-notes mt-1">Profile</span>
+</a>
+</nav>
+<script>
+        // Simple cell selection logic for demonstration
+        document.querySelectorAll('.sudoku-cell').forEach(cell => {
+            cell.addEventListener('click', function() {
+                document.querySelectorAll('.sudoku-cell').forEach(c => c.classList.remove('selected'));
+                this.classList.add('selected');
+            });
+        });
+    </script>
+</body></html>

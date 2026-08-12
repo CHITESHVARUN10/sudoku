@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Registration - Sudoku Arena</title>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;500;600&amp;family=Inter:wght@400;500&amp;family=JetBrains+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface": "#fbf9f4",
+                        "on-primary-container": "#95a4c4",
+                        "error-red": "#9E2A2B",
+                        "inverse-on-surface": "#f2f1ec",
+                        "on-surface-variant": "#44474d",
+                        "on-primary-fixed": "#0b1b35",
+                        "inverse-primary": "#b7c7e8",
+                        "tertiary-container": "#49370f",
+                        "tertiary": "#312200",
+                        "ink-black": "#1A1A1A",
+                        "primary-container": "#2b3a55",
+                        "background": "#fbf9f4",
+                        "error": "#ba1a1a",
+                        "on-secondary-container": "#636262",
+                        "on-tertiary-fixed-variant": "#57441b",
+                        "on-secondary-fixed": "#1c1b1b",
+                        "on-background": "#1b1c19",
+                        "on-secondary": "#ffffff",
+                        "note-gray": "#7A7875",
+                        "on-tertiary-container": "#baa06f",
+                        "ink-blue": "#2B3A55",
+                        "outline": "#75777e",
+                        "on-primary-fixed-variant": "#384763",
+                        "surface-variant": "#e4e2dd",
+                        "on-primary": "#ffffff",
+                        "primary": "#15243e",
+                        "surface-container-highest": "#e4e2dd",
+                        "on-error": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "tertiary-fixed-dim": "#dfc38e",
+                        "secondary-fixed": "#e5e2e1",
+                        "secondary": "#5f5e5e",
+                        "tertiary-fixed": "#fddfa8",
+                        "inverse-surface": "#30312e",
+                        "secondary-container": "#e2dfde",
+                        "error-container": "#ffdad6",
+                        "primary-fixed": "#d7e3ff",
+                        "paper-white": "#F7F5F0",
+                        "surface-container": "#f0eee9",
+                        "on-tertiary": "#ffffff",
+                        "primary-fixed-dim": "#b7c7e8",
+                        "surface-container-low": "#f5f3ee",
+                        "on-secondary-fixed-variant": "#474746",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-tint": "#505f7c",
+                        "outline-variant": "#c5c6ce",
+                        "on-surface": "#1b1c19",
+                        "surface-bright": "#fbf9f4",
+                        "secondary-fixed-dim": "#c8c6c5",
+                        "on-tertiary-fixed": "#261900",
+                        "surface-container-high": "#eae8e3",
+                        "surface-dim": "#dbdad5"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-lg": "64px",
+                        "hairline": "1px",
+                        "margin-sm": "16px",
+                        "grid-unit": "4px",
+                        "margin-md": "32px",
+                        "cell-size": "64px"
+                    },
+                    "fontFamily": {
+                        "headline-sm": ["EB Garamond"],
+                        "display-lg": ["EB Garamond"],
+                        "grid-number": ["JetBrains Mono"],
+                        "label-mono": ["JetBrains Mono"],
+                        "headline-md": ["EB Garamond"],
+                        "grid-notes": ["JetBrains Mono"],
+                        "body-md": ["Inter"],
+                        "body-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-sm": ["24px", { "lineHeight": "32px", "fontWeight": "500" }],
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "grid-number": ["28px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "label-mono": ["20px", { "lineHeight": "20px", "fontWeight": "500" }],
+                        "headline-md": ["32px", { "lineHeight": "40px", "fontWeight": "500" }],
+                        "grid-notes": ["12px", { "lineHeight": "12px", "fontWeight": "400" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .grid-bg {
+            background-image: 
+                linear-gradient(to right, rgba(26, 26, 26, 0.05) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(26, 26, 26, 0.05) 1px, transparent 1px);
+            background-size: 64px 64px;
+        }
+        
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-paper-white text-ink-black min-h-screen flex flex-col font-body-md grid-bg selection:bg-ink-blue selection:text-paper-white">
+<!-- Top Navigation Bar (Suppressed for Linear/Transactional Flow - Replaced with minimal brand anchor) -->
+<!-- Main Content Area -->
+<main class="flex-grow flex relative z-0"><div class="flex w-full min-h-screen">
+<!-- Left Panel -->
+<div class="hidden lg:flex flex-col justify-center items-center w-1/2 bg-ink-black p-margin-lg text-surface">
+<div class="max-w-md">
+<h1 class="font-display-lg text-display-lg tracking-[0.2em] uppercase mb-4">Sudoku Arena</h1>
+<p class="font-body-lg text-body-lg opacity-80">Join the Arena. Enter the grid.</p>
+</div>
+</div>
+<!-- Right Panel -->
+<div class="flex flex-col justify-center items-center w-full lg:w-1/2 bg-surface p-margin-md md:p-margin-lg">
+<div class="w-full max-w-[360px]">
+<h2 class="font-display-lg text-headline-md uppercase tracking-widest mb-margin-md">Create Account</h2>
+<form action="#" class="space-y-8" method="POST">
+<!-- Name Field -->
+<div class="group">
+<label class="block font-label-mono text-grid-notes uppercase tracking-widest text-ink-black mb-2" for="name">Name</label>
+<input class="block w-full bg-transparent border-0 border-b border-ink-black focus:ring-0 focus:border-ink-blue px-0 py-2 font-body-md text-body-md text-ink-black placeholder:text-note-gray transition-colors" id="name" name="name" placeholder="Your full name" required="" type="text"/>
+</div>
+<!-- Email Field -->
+<div class="group">
+<label class="block font-label-mono text-grid-notes uppercase tracking-widest text-ink-black mb-2" for="email">Email</label>
+<input class="block w-full bg-transparent border-0 border-b border-ink-black focus:ring-0 focus:border-ink-blue px-0 py-2 font-body-md text-body-md text-ink-black placeholder:text-note-gray transition-colors" id="email" name="email" placeholder="name@domain.com" required="" type="email"/>
+</div>
+<!-- Password Field -->
+<div class="group">
+<label class="block font-label-mono text-grid-notes uppercase tracking-widest text-ink-black mb-2" for="password">Password</label>
+<div class="relative">
+<input class="block w-full bg-transparent border-0 border-b border-ink-black focus:ring-0 focus:border-ink-blue px-0 py-2 font-body-md text-body-md text-ink-black placeholder:text-note-gray transition-colors" id="password" name="password" placeholder="••••••••" required="" type="password"/>
+<button class="absolute right-0 top-1/2 -translate-y-1/2 text-note-gray hover:text-ink-black transition-colors focus:outline-none" type="button">
+<span class="material-symbols-outlined">visibility_off</span>
+</button>
+</div>
+<p class="mt-2 font-body-md text-[12px] text-note-gray">Minimum 8 characters</p>
+</div>
+<!-- Submit Button -->
+<div class="pt-4">
+<button class="w-full bg-ink-black text-surface font-label-mono text-label-mono uppercase tracking-[0.2em] py-4 px-6 hover:bg-opacity-90 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ink-black" type="submit">
+                        Create Account
+                    </button>
+</div>
+</form>
+<div class="mt-margin-md">
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-ink-black border-b border-transparent hover:border-ink-black transition-all inline-flex items-center" href="#">
+                    Already have an account? Log in.
+                </a>
+</div>
+</div>
+</div>
+</div></main>
+<!-- Footer (Suppressed based on Transactional Screen rule, but keeping a minimalist version for structure if needed, choosing to hide entirely to focus on canvas) -->
+<script>
+        // Simple password visibility toggle
+        document.addEventListener('DOMContentLoaded', () => {
+            const passwordInput = document.getElementById('password');
+            const toggleBtn = passwordInput.nextElementSibling;
+            
+            toggleBtn.addEventListener('click', () => {
+                const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                passwordInput.setAttribute('type', type);
+                
+                const icon = toggleBtn.querySelector('.material-symbols-outlined');
+                icon.textContent = type === 'password' ? 'visibility_off' : 'visibility';
+            });
+        });
+    </script>
+</body></html>

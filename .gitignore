@@ -1,0 +1,52 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# AI Assistants, Agents & Metadata (Excluded to prevent contributor attribution)
+.commandcode/
+**/.commandcode/
+.commandcode
+.gemini/
+**/.gemini/
+.gemini
+.gemini-cli/
+**/.gemini-cli/
+.gemini-cli
+.antigravity/
+**/.antigravity/
+.antigravity
+.codex/
+**/.codex/
+.codex
+.claude/
+**/.claude/
+.claude
+.claude-code/
+**/.claude-code/
+.claude-code
+.cursor/
+**/.cursor/
+.cursor
+.agents/
+**/.agents/
+.agents
+
+# Build & Output directories
+dist/
+**/dist/
+build/
+**/build/
+.output/
+
+# Environment and Local Configs
+.env
+.env.local
+.env.*.local
+*.env
+
+# IDE & OS Metadata
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log

@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Game Archive - SUDOKU</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@500;600&amp;family=Inter:wght@400&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "outline": "#75777e",
+                      "on-primary-fixed-variant": "#384763",
+                      "on-secondary": "#ffffff",
+                      "surface-dim": "#dbdad5",
+                      "surface-container-low": "#f5f3ee",
+                      "on-tertiary": "#ffffff",
+                      "on-secondary-fixed": "#1c1b1b",
+                      "surface-container": "#f0eee9",
+                      "on-error-container": "#93000a",
+                      "primary": "#15243e",
+                      "surface-tint": "#505f7c",
+                      "primary-container": "#2b3a55",
+                      "outline-variant": "#c5c6ce",
+                      "on-error": "#ffffff",
+                      "on-primary-container": "#95a4c4",
+                      "primary-fixed-dim": "#b7c7e8",
+                      "error-container": "#ffdad6",
+                      "on-tertiary-fixed": "#261900",
+                      "on-surface": "#1b1c19",
+                      "surface": "#fbf9f4",
+                      "on-surface-variant": "#44474d",
+                      "on-primary-fixed": "#0b1b35",
+                      "paper-white": "#F7F5F0",
+                      "ink-black": "#1A1A1A",
+                      "secondary-fixed": "#e5e2e1",
+                      "secondary": "#5f5e5e",
+                      "tertiary-fixed-dim": "#dfc38e",
+                      "background": "#fbf9f4",
+                      "inverse-surface": "#30312e",
+                      "on-primary": "#ffffff",
+                      "on-background": "#1b1c19",
+                      "secondary-container": "#e2dfde",
+                      "error-red": "#9E2A2B",
+                      "on-tertiary-fixed-variant": "#57441b",
+                      "tertiary-fixed": "#fddfa8",
+                      "error": "#ba1a1a",
+                      "tertiary-container": "#49370f",
+                      "surface-variant": "#e4e2dd",
+                      "primary-fixed": "#d7e3ff",
+                      "inverse-on-surface": "#f2f1ec",
+                      "ink-blue": "#2B3A55",
+                      "surface-container-high": "#eae8e3",
+                      "surface-container-lowest": "#ffffff",
+                      "tertiary": "#312200",
+                      "on-tertiary-container": "#baa06f",
+                      "note-gray": "#7A7875",
+                      "surface-bright": "#fbf9f4",
+                      "inverse-primary": "#b7c7e8",
+                      "on-secondary-container": "#636262",
+                      "on-secondary-fixed-variant": "#474746",
+                      "secondary-fixed-dim": "#c8c6c5",
+                      "surface-container-highest": "#e4e2dd"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "margin-sm": "16px",
+                      "margin-lg": "64px",
+                      "cell-size": "64px",
+                      "hairline": "1px",
+                      "grid-unit": "4px",
+                      "margin-md": "32px"
+              },
+              "fontFamily": {
+                      "grid-notes": ["JetBrains Mono"],
+                      "grid-number": ["JetBrains Mono"],
+                      "display-lg": ["EB Garamond"],
+                      "body-md": ["Inter"],
+                      "headline-sm": ["EB Garamond"],
+                      "body-lg": ["Inter"],
+                      "label-mono": ["JetBrains Mono"],
+                      "headline-md": ["EB Garamond"]
+              },
+              "fontSize": {
+                      "grid-notes": ["12px", {"lineHeight": "12px", "fontWeight": "400"}],
+                      "grid-number": ["28px", {"lineHeight": "28px", "fontWeight": "400"}],
+                      "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                      "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                      "headline-sm": ["24px", {"lineHeight": "32px", "fontWeight": "500"}],
+                      "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                      "label-mono": ["20px", {"lineHeight": "20px", "fontWeight": "500"}],
+                      "headline-md": ["32px", {"lineHeight": "40px", "fontWeight": "500"}]
+              }
+            }
+          }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-paper-white text-ink-black min-h-screen flex flex-col font-body-md antialiased">
+<!-- TopNavBar JSON Component -->
+<header class="w-full border-b border-ink-black bg-paper-white">
+<div class="flex justify-between items-center w-full px-margin-lg h-16 max-w-[1440px] mx-auto">
+<!-- Brand -->
+<div class="font-headline-md text-headline-md font-bold text-ink-black uppercase tracking-tighter">
+                SUDOKU
+            </div>
+<!-- Navigation Links -->
+<nav class="hidden md:flex items-center space-x-8 font-headline-sm text-headline-sm uppercase tracking-wider h-full">
+<a class="text-note-gray hover:text-ink-black transition-colors duration-150 h-full flex items-center" href="#">DAILY</a>
+<a class="text-ink-black border-b-2 border-ink-black h-full flex items-center pt-0.5" href="#">ARCHIVE</a>
+<a class="text-note-gray hover:text-ink-black transition-colors duration-150 h-full flex items-center" href="#">STATS</a>
+</nav>
+<!-- Trailing Actions -->
+<div class="flex items-center space-x-6">
+<button class="font-headline-sm text-headline-sm uppercase tracking-wider border border-ink-black px-4 py-1 hover:bg-surface-variant transition-colors duration-150">
+                    PLAY NOW
+                </button>
+<div class="flex space-x-4 text-ink-black">
+<span class="material-symbols-outlined cursor-pointer hover:bg-surface-variant transition-colors duration-150 rounded-full p-1">settings</span>
+<span class="material-symbols-outlined cursor-pointer hover:bg-surface-variant transition-colors duration-150 rounded-full p-1">help</span>
+</div>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-grow w-full max-w-[1024px] mx-auto px-margin-lg pt-margin-lg pb-24">
+<!-- Header & Filters -->
+<div class="mb-12">
+<h1 class="font-headline-md text-headline-md font-bold uppercase tracking-[0.1em] text-ink-black pb-4 border-b border-ink-black mb-4">
+                GAME ARCHIVE
+            </h1>
+<!-- Filter Row -->
+<div class="flex items-center font-label-mono text-label-mono text-note-gray uppercase">
+<button class="text-ink-black underline underline-offset-4 decoration-[1px] hover:text-ink-black pr-6">All</button>
+<div class="w-px h-4 bg-ink-black mx-2"></div>
+<button class="hover:text-ink-black px-6">Multiplayer</button>
+<div class="w-px h-4 bg-ink-black mx-2"></div>
+<button class="hover:text-ink-black pl-6">Solo</button>
+</div>
+</div>
+<!-- Ledger List View -->
+<div class="w-full">
+<!-- Table Header -->
+<div class="grid grid-cols-12 gap-4 pb-4 border-b border-ink-black font-label-mono text-[14px] text-note-gray uppercase tracking-wider">
+<div class="col-span-2">Date</div>
+<div class="col-span-2">Mode</div>
+<div class="col-span-2">Difficulty</div>
+<div class="col-span-3">Opponent</div>
+<div class="col-span-2">Result</div>
+<div class="col-span-1 text-right">Time</div>
+</div>
+<!-- Ledger Row: Collapsed -->
+<div class="group grid grid-cols-12 gap-4 py-6 border-b border-ink-black hover:bg-surface-container-low transition-colors duration-150 cursor-pointer items-center text-body-md">
+<div class="col-span-2 font-label-mono text-label-mono text-ink-black">24.10.26</div>
+<div class="col-span-2">Solo</div>
+<div class="col-span-2">Expert</div>
+<div class="col-span-3 text-note-gray">—</div>
+<div class="col-span-2">Solved</div>
+<div class="col-span-1 text-right font-label-mono text-label-mono">14:22</div>
+</div>
+<!-- Ledger Row: Expanded (Inline detail) -->
+<div class="border-b border-ink-black bg-surface-container-low">
+<!-- Row Header (Active state) -->
+<div class="grid grid-cols-12 gap-4 py-6 px-4 cursor-pointer items-center text-body-md border-b border-ink-black/20">
+<div class="col-span-2 font-label-mono text-label-mono text-ink-black">24.10.25</div>
+<div class="col-span-2">Multiplayer</div>
+<div class="col-span-2">Hard</div>
+<div class="col-span-3">@logic_master</div>
+<div class="col-span-2 text-error-red">Lost</div>
+<div class="col-span-1 text-right font-label-mono text-label-mono">08:15</div>
+</div>
+<!-- Expanded Detail Area (Mini Grid) -->
+<div class="p-8 flex items-start gap-12">
+<!-- Miniature Board Representation -->
+<div class="w-[180px] h-[180px] border border-ink-black grid grid-cols-3 grid-rows-3 bg-paper-white shrink-0">
+<!-- Subgrid 1 -->
+<div class="border-r border-b border-ink-black grid grid-cols-3 grid-rows-3">
+<div class="border-r border-b border-ink-black/30 flex items-center justify-center font-grid-number text-[14px]">5</div>
+<div class="border-r border-b border-ink-black/30 flex items-center justify-center font-grid-number text-[14px]">3</div>
+<div class="border-b border-ink-black/30 flex items-center justify-center bg-ink-blue/10"></div>
+<div class="border-r border-b border-ink-black/30 flex items-center justify-center font-grid-number text-[14px]">6</div>
+<div class="border-r border-b border-ink-black/30 flex items-center justify-center bg-ink-blue/10"></div>
+<div class="border-b border-ink-black/30 flex items-center justify-center font-grid-number text-[14px]">9</div>
+<div class="border-r border-ink-black/30 flex items-center justify-center bg-ink-blue/10"></div>
+<div class="border-r border-ink-black/30 flex items-center justify-center font-grid-number text-[14px]">9</div>
+<div class="flex items-center justify-center font-grid-number text-[14px]">8</div>
+</div>
+<!-- Empty visual representation blocks for the rest to simulate a board quickly -->
+<div class="border-r border-b border-ink-black bg-surface-variant/30"></div>
+<div class="border-b border-ink-black bg-surface-variant/30"></div>
+<div class="border-r border-b border-ink-black bg-surface-variant/30"></div>
+<div class="border-r border-b border-ink-black bg-surface-variant/30"></div>
+<div class="border-b border-ink-black bg-surface-variant/30"></div>
+<div class="border-r border-ink-black bg-surface-variant/30"></div>
+<div class="border-r border-ink-black bg-surface-variant/30"></div>
+<div class="bg-surface-variant/30"></div>
+</div>
+<!-- Match Details -->
+<div class="flex flex-col space-y-4 max-w-sm">
+<div class="font-headline-sm text-headline-sm">Match Analysis</div>
+<p class="font-body-md text-note-gray leading-relaxed">
+                            Opponent completed the grid 45 seconds faster. Key stalling point: Box 3 row column interaction.
+                        </p>
+<button class="self-start mt-2 border border-ink-black px-4 py-2 font-label-mono text-[14px] uppercase hover:bg-ink-black hover:text-paper-white transition-colors">
+                            Review Board
+                        </button>
+</div>
+</div>
+</div>
+<!-- Ledger Row: Collapsed -->
+<div class="group grid grid-cols-12 gap-4 py-6 border-b border-ink-black hover:bg-surface-container-low transition-colors duration-150 cursor-pointer items-center text-body-md">
+<div class="col-span-2 font-label-mono text-label-mono text-ink-black">24.10.24</div>
+<div class="col-span-2">Solo</div>
+<div class="col-span-2">Medium</div>
+<div class="col-span-3 text-note-gray">—</div>
+<div class="col-span-2">Solved</div>
+<div class="col-span-1 text-right font-label-mono text-label-mono">06:40</div>
+</div>
+<!-- Ledger Row: Collapsed -->
+<div class="group grid grid-cols-12 gap-4 py-6 border-b border-ink-black hover:bg-surface-container-low transition-colors duration-150 cursor-pointer items-center text-body-md">
+<div class="col-span-2 font-label-mono text-label-mono text-ink-black">24.10.23</div>
+<div class="col-span-2">Daily</div>
+<div class="col-span-2">Hard</div>
+<div class="col-span-3 text-note-gray">—</div>
+<div class="col-span-2">Abandoned</div>
+<div class="col-span-1 text-right font-label-mono text-label-mono">22:00</div>
+</div>
+<!-- Empty State Demonstration (Hidden by default in a real app if data exists, but shown here for layout reference) -->
+<div class="mt-24 text-center">
+<p class="font-headline-sm text-headline-sm text-note-gray">
+                    No games yet — start your first puzzle.
+                </p>
+</div>
+</div>
+</main>
+<!-- Footer JSON Component -->
+<footer class="w-full bg-paper-white border-t border-ink-black mt-auto">
+<div class="w-full py-margin-md px-margin-lg flex flex-col md:flex-row justify-between items-center max-w-[1440px] mx-auto font-label-mono text-label-mono text-ink-black">
+<div class="mb-4 md:mb-0 text-note-gray">
+                © 2024 Editorial Sudoku. All Rights Reserved.
+            </div>
+<div class="flex space-x-8">
+<a class="text-note-gray hover:text-ink-black transition-colors duration-150" href="#">Privacy Policy</a>
+<a class="text-note-gray hover:text-ink-black transition-colors duration-150" href="#">Terms of Service</a>
+<a class="text-note-gray hover:text-ink-black transition-colors duration-150" href="#">Accessibility</a>
+</div>
+</div>
+</footer>
+</body></html>

@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>SUDOKU ARENA - The Art of the Logical Grid</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..800;1,400..800&amp;family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "background": "#fbf9f4",
+                        "on-primary-fixed-variant": "#384763",
+                        "ink-blue": "#2B3A55",
+                        "inverse-primary": "#b7c7e8",
+                        "tertiary": "#312200",
+                        "surface-variant": "#e4e2dd",
+                        "primary-container": "#2b3a55",
+                        "on-background": "#1b1c19",
+                        "primary-fixed-dim": "#b7c7e8",
+                        "surface-container-low": "#f5f3ee",
+                        "on-secondary-container": "#636262",
+                        "surface-container-high": "#eae8e3",
+                        "outline-variant": "#c5c6ce",
+                        "surface-bright": "#fbf9f4",
+                        "on-primary": "#ffffff",
+                        "on-secondary-fixed": "#1c1b1b",
+                        "surface-container-highest": "#e4e2dd",
+                        "tertiary-container": "#49370f",
+                        "secondary-fixed": "#e5e2e1",
+                        "on-primary-fixed": "#0b1b35",
+                        "ink-black": "#1A1A1A",
+                        "error": "#ba1a1a",
+                        "on-secondary": "#ffffff",
+                        "surface-container-lowest": "#ffffff",
+                        "paper-white": "#F7F5F0",
+                        "primary": "#15243e",
+                        "surface-dim": "#dbdad5",
+                        "surface-tint": "#505f7c",
+                        "error-red": "#9E2A2B",
+                        "error-container": "#ffdad6",
+                        "on-error": "#ffffff",
+                        "on-surface-variant": "#44474d",
+                        "tertiary-fixed-dim": "#dfc38e",
+                        "on-tertiary": "#ffffff",
+                        "surface-container": "#f0eee9",
+                        "on-primary-container": "#95a4c4",
+                        "on-tertiary-container": "#baa06f",
+                        "secondary": "#5f5e5e",
+                        "tertiary-fixed": "#fddfa8",
+                        "note-gray": "#7A7875",
+                        "surface": "#fbf9f4",
+                        "secondary-container": "#e2dfde",
+                        "on-error-container": "#93000a",
+                        "on-tertiary-fixed": "#261900",
+                        "on-tertiary-fixed-variant": "#57441b",
+                        "primary-fixed": "#d7e3ff",
+                        "inverse-surface": "#30312e",
+                        "inverse-on-surface": "#f2f1ec",
+                        "outline": "#75777e",
+                        "secondary-fixed-dim": "#c8c6c5",
+                        "on-surface": "#1b1c19",
+                        "on-secondary-fixed-variant": "#474746"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "grid-unit": "4px",
+                        "hairline": "1px",
+                        "margin-sm": "16px",
+                        "margin-lg": "64px",
+                        "margin-md": "32px",
+                        "cell-size": "64px"
+                    },
+                    "fontFamily": {
+                        "grid-notes": ["JetBrains Mono"],
+                        "body-md": ["Inter"],
+                        "grid-number": ["JetBrains Mono"],
+                        "label-mono": ["JetBrains Mono"],
+                        "display-lg": ["EB Garamond"],
+                        "headline-sm": ["EB Garamond"],
+                        "body-lg": ["Inter"],
+                        "headline-md": ["EB Garamond"]
+                    },
+                    "fontSize": {
+                        "grid-notes": ["12px", { "lineHeight": "12px", "fontWeight": "400" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "grid-number": ["28px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "label-mono": ["20px", { "lineHeight": "20px", "fontWeight": "500" }],
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "headline-sm": ["24px", { "lineHeight": "32px", "fontWeight": "500" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "headline-md": ["32px", { "lineHeight": "40px", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #F7F5F0;
+            color: #1A1A1A;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .hairline-border {
+            border-color: #1A1A1A;
+            border-width: 1px;
+        }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen">
+<!-- TopNavBar -->
+<nav class="w-full bg-background border-b hairline-border docked full-width top flat no shadows">
+<div class="flex justify-between items-center w-full px-margin-lg py-4 max-w-7xl mx-auto">
+<div class="font-headline-sm text-headline-sm uppercase tracking-wider text-ink-black">
+                SUDOKU ARENA
+            </div>
+<div class="hidden md:flex gap-8">
+<a class="font-label-mono text-label-mono text-ink-blue border-b-2 border-ink-blue pb-1 transition-colors duration-200" href="#">Play</a>
+<a class="font-label-mono text-label-mono text-secondary hover:text-ink-blue transition-colors duration-200 pb-1" href="#">Learn</a>
+</div>
+<button class="md:hidden p-2 text-ink-black">
+<span class="material-symbols-outlined">menu</span>
+</button>
+</div>
+</nav>
+<main class="flex-grow w-full max-w-7xl mx-auto px-margin-sm md:px-margin-lg">
+<!-- Hero Section -->
+<section class="py-16 md:py-32 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+<div class="flex flex-col items-start gap-8">
+<h1 class="font-display-lg text-display-lg text-ink-black">
+                    The Art of the Logical Grid
+                </h1>
+<p class="font-body-lg text-body-lg text-ink-black max-w-lg">
+                    Master the ancient art of number placement in a beautifully typeset digital arena.
+                </p>
+<div class="flex flex-row gap-4 w-full sm:w-auto">
+<button class="bg-ink-blue text-on-primary font-label-mono text-label-mono px-8 py-4 rounded-[2px] hover:bg-ink-black transition-colors w-full sm:w-auto text-center border hairline-border border-ink-blue hover:border-ink-black">
+                        Play Multiplayer
+                    </button>
+<button class="bg-transparent text-ink-black font-label-mono text-label-mono px-8 py-4 rounded-[2px] border hairline-border hover:bg-ink-black hover:text-paper-white transition-colors w-full sm:w-auto text-center">
+                        Practice Solo
+                    </button>
+</div>
+</div>
+<div class="relative w-full aspect-square flex justify-center items-center p-8 bg-paper-white border hairline-border">
+<img alt="Sudoku Grid" class="w-full h-full object-contain mix-blend-multiply" src="https://lh3.googleusercontent.com/aida/AP1WRLtzLR-opO5MZS5ryUzpn85C6m5wXUF8OcewRegsYfb7KaM_An3ZuOlEM_wYaM8DCUzWZNsMMcRDIhMgXCaX1X0l3Y05Rkidb7E1-ZwWqFX_L07U7-NJoimxceBBlvYebDZGLA9H1z2AGrOg3ILSKL2V6MXdWQPvo5Y3nYMOfKAgMiylbsablm6JtAox6pKMOKNK9bNWeYE6Vj3Cqwh8aOZHdr6okrQwK8evrrdKqmUM813n0nT_aMrK23c"/>
+</div>
+</section>
+<!-- History Section -->
+<section class="py-16 border-t hairline-border">
+<div class="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
+<div class="md:col-span-7 pr-0 md:pr-8 md:border-r hairline-border">
+<h2 class="font-display-lg text-display-lg text-ink-black italic leading-tight">
+                        "From 'Number Place' to a Global Phenomenon."
+                    </h2>
+</div>
+<div class="md:col-span-5 pl-0 md:pl-8 flex flex-col gap-6">
+<p class="font-body-md text-body-md text-ink-black">
+                        Originating in 1979 in the United States as "Number Place," the elegant logic puzzle was initially published in specialized magazines, quietly challenging readers with its simple premise and complex deductions.
+                    </p>
+<p class="font-body-md text-body-md text-ink-black">
+                        It wasn't until 1984 that the puzzle found its true name and widespread popularity in Japan, championed by the puzzle publisher Nikoli. Translated to "the digits must be single," Sudoku became a staple of daily mental exercise worldwide.
+                    </p>
+</div>
+</div>
+</section>
+<!-- Facts Section -->
+<section class="py-16 border-t hairline-border mb-16">
+<div class="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x hairline-border">
+<!-- Fact 1 -->
+<div class="flex flex-col gap-4 p-8 md:pl-0">
+<div class="w-12 h-12 rounded-full border hairline-border flex items-center justify-center font-grid-number text-grid-number text-ink-blue">
+                        1
+                    </div>
+<h3 class="font-headline-sm text-headline-sm text-ink-black font-semibold">
+                        Sharpens working memory
+                    </h3>
+<p class="font-body-md text-body-md text-secondary">
+                        Engaging with the grid actively builds cognitive reserve.
+                    </p>
+</div>
+<!-- Fact 2 -->
+<div class="flex flex-col gap-4 p-8">
+<div class="w-12 h-12 rounded-full border hairline-border flex items-center justify-center font-grid-number text-grid-number text-ink-blue">
+                        2
+                    </div>
+<h3 class="font-headline-sm text-headline-sm text-ink-black font-semibold">
+                        Pure logic, no math
+                    </h3>
+<p class="font-body-md text-body-md text-secondary">
+                        Success relies entirely on deduction, making it universally accessible.
+                    </p>
+</div>
+<!-- Fact 3 -->
+<div class="flex flex-col gap-4 p-8 md:pr-0">
+<div class="w-12 h-12 rounded-full border hairline-border flex items-center justify-center font-grid-number text-grid-number text-ink-blue">
+                        3
+                    </div>
+<h3 class="font-headline-sm text-headline-sm text-ink-black font-semibold">
+                        A meditative state
+                    </h3>
+<p class="font-body-md text-body-md text-secondary">
+                        The focused attention required induces a flow state of calm.
+                    </p>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="w-full bg-background border-t hairline-border docked full-width bottom flat no shadows mt-auto">
+<div class="w-full px-margin-lg py-margin-md max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+<div class="font-headline-sm text-headline-sm text-ink-black">
+                SUDOKU ARENA
+            </div>
+<div class="flex gap-6 font-label-mono text-label-mono">
+<a class="text-secondary hover:text-ink-black underline underline-offset-4 transition-colors" href="#">Terms</a>
+<a class="text-secondary hover:text-ink-black underline underline-offset-4 transition-colors" href="#">Privacy</a>
+<a class="text-secondary hover:text-ink-black underline underline-offset-4 transition-colors" href="#">Contact</a>
+</div>
+<div class="font-body-md text-body-md text-secondary">
+                © 2024 SUDOKU ARENA. ALL RIGHTS RESERVED.
+            </div>
+</div>
+</footer>
+</body></html>

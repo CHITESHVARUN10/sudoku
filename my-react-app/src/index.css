@@ -1,0 +1,381 @@
+@import "tailwindcss";
+
+@theme {
+  /* Colors */
+  --color-background: #fbf9f4;
+  --color-on-primary-fixed-variant: #384763;
+  --color-ink-blue: #2b3a55;
+  --color-inverse-primary: #b7c7e8;
+  --color-tertiary: #312200;
+  --color-surface-variant: #e4e2dd;
+  --color-primary-container: #2b3a55;
+  --color-on-background: #1b1c19;
+  --color-primary-fixed-dim: #b7c7e8;
+  --color-surface-container-low: #f5f3ee;
+  --color-on-secondary-container: #636262;
+  --color-surface-container-high: #eae8e3;
+  --color-outline-variant: #c5c6ce;
+  --color-surface-bright: #fbf9f4;
+  --color-on-primary: #ffffff;
+  --color-on-secondary-fixed: #1c1b1b;
+  --color-surface-container-highest: #e4e2dd;
+  --color-tertiary-container: #49370f;
+  --color-secondary-fixed: #e5e2e1;
+  --color-on-primary-fixed: #0b1b35;
+  --color-ink-black: #1a1a1a;
+  --color-error: #ba1a1a;
+  --color-on-secondary: #ffffff;
+  --color-surface-container-lowest: #ffffff;
+  --color-paper-white: #f7f5f0;
+  --color-primary: #15243e;
+  --color-surface-dim: #dbdad5;
+  --color-surface-tint: #505f7c;
+  --color-error-red: #9e2a2b;
+  --color-error-container: #ffdad6;
+  --color-on-error: #ffffff;
+  --color-on-surface-variant: #44474d;
+  --color-tertiary-fixed-dim: #dfc38e;
+  --color-on-tertiary: #ffffff;
+  --color-surface-container: #f0eee9;
+  --color-on-primary-container: #95a4c4;
+  --color-on-tertiary-container: #baa06f;
+  --color-secondary: #5f5e5e;
+  --color-tertiary-fixed: #fddfa8;
+  --color-note-gray: #7a7875;
+  --color-surface: #fbf9f4;
+  --color-secondary-container: #e2dfde;
+  --color-on-error-container: #93000a;
+  --color-on-tertiary-fixed: #261900;
+  --color-on-tertiary-fixed-variant: #57441b;
+  --color-primary-fixed: #d7e3ff;
+  --color-inverse-surface: #30312e;
+  --color-inverse-on-surface: #f2f1ec;
+  --color-outline: #75777e;
+  --color-on-surface: #1b1c19;
+  --color-on-secondary-fixed-variant: #474746;
+
+  /* Fonts */
+  --font-display-lg: "EB Garamond", serif;
+  --font-headline-sm: "EB Garamond", serif;
+  --font-headline-md: "EB Garamond", serif;
+  --font-body-lg: "Inter", sans-serif;
+  --font-body-md: "Inter", sans-serif;
+  --font-label-mono: "JetBrains Mono", monospace;
+  --font-grid-number: "JetBrains Mono", monospace;
+  --font-grid-notes: "JetBrains Mono", monospace;
+
+  /* Font sizes (with line-height, weight, letter-spacing) */
+  --text-display-lg: 48px;
+  --text-display-lg--line-height: 56px;
+  --text-display-lg--letter-spacing: -0.02em;
+  --text-display-lg--font-weight: 600;
+
+  --text-headline-md: 32px;
+  --text-headline-md--line-height: 40px;
+  --text-headline-md--font-weight: 500;
+
+  --text-headline-sm: 24px;
+  --text-headline-sm--line-height: 32px;
+  --text-headline-sm--font-weight: 500;
+
+  --text-body-lg: 18px;
+  --text-body-lg--line-height: 28px;
+  --text-body-lg--font-weight: 400;
+
+  --text-body-md: 16px;
+  --text-body-md--line-height: 24px;
+  --text-body-md--font-weight: 400;
+
+  --text-label-mono: 20px;
+  --text-label-mono--line-height: 20px;
+  --text-label-mono--font-weight: 500;
+
+  --text-grid-number: 28px;
+  --text-grid-number--line-height: 28px;
+  --text-grid-number--font-weight: 400;
+
+  --text-grid-notes: 12px;
+  --text-grid-notes--line-height: 12px;
+  --text-grid-notes--font-weight: 400;
+
+  /* Spacing */
+  --spacing-grid-unit: 4px;
+  --spacing-hairline: 1px;
+  --spacing-margin-sm: 16px;
+  --spacing-margin-md: 32px;
+  --spacing-margin-lg: 64px;
+  --spacing-cell-size: 64px;
+
+  /* Shadows */
+  --shadow-hard: 4px 4px 0px 0px rgba(26, 26, 26, 1);
+  --shadow-hard-sm: 2px 2px 0px 0px rgba(26, 26, 26, 1);
+}
+
+body {
+  background-color: #f7f5f0;
+  color: #1a1a1a;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Setup page grid background */
+.grid-bg {
+  background-image: linear-gradient(to right, #e2dfde 1px, transparent 1px),
+    linear-gradient(to bottom, #e2dfde 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+/* Faint 64px grid background (register page) */
+.grid-bg-64 {
+  background-image: linear-gradient(to right, rgba(26, 26, 26, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(26, 26, 26, 0.05) 1px, transparent 1px);
+  background-size: 64px 64px;
+}
+
+/* Editorial underline inputs (login page) */
+.editorial-input {
+  border: none;
+  border-bottom: 1px solid #1a1a1a;
+  border-radius: 0;
+  padding-left: 0;
+  padding-right: 0;
+  background-color: transparent;
+}
+
+.editorial-input:focus {
+  outline: none;
+  box-shadow: none;
+  border-bottom: 2px solid #2b3a55;
+}
+
+/* Underline inputs (account settings) */
+.input-underline {
+  border: none;
+  border-bottom: 1px solid #1a1a1a;
+  background: transparent;
+  padding: 8px 0;
+  width: 100%;
+  outline: none;
+  border-radius: 0;
+  box-shadow: none !important;
+}
+
+.input-underline:focus {
+  border-bottom: 2px solid #1a1a1a;
+}
+
+/* Segmented buttons (account settings difficulty) */
+.segmented-btn {
+  border: 1px solid #1a1a1a;
+  border-right: none;
+}
+
+.segmented-btn:last-child {
+  border-right: 1px solid #1a1a1a;
+}
+
+.segmented-btn.active {
+  background-color: #1a1a1a;
+  color: #f7f5f0;
+}
+
+/* Blinking cursor (waiting room) */
+.blinking-cursor {
+  animation: blink 1s step-end infinite;
+}
+
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+/* Hairline border utilities */
+.border-hairline {
+  border-width: 1px;
+  border-color: #1a1a1a;
+}
+
+.border-t-hairline {
+  border-top-width: 1px;
+  border-color: #1a1a1a;
+}
+
+.border-b-hairline {
+  border-bottom-width: 1px;
+  border-color: #1a1a1a;
+}
+
+.border-l-hairline {
+  border-left-width: 1px;
+  border-color: #1a1a1a;
+}
+
+.border-r-hairline {
+  border-right-width: 1px;
+  border-color: #1a1a1a;
+}
+
+/* Multiplayer setup modal grid background */
+.bg-grid-pattern {
+  background-image: linear-gradient(#e4e2dd 1px, transparent 1px),
+    linear-gradient(90deg, #e4e2dd 1px, transparent 1px);
+  background-size: 64px 64px;
+}
+
+/* Hard shadow (2px version used by the multiplayer modal) */
+.hard-shadow {
+  box-shadow: 2px 2px 0px 0px #1a1a1a;
+}
+
+/* Single-player sudoku grid */
+.sudoku-grid {
+  display: grid;
+  grid-template-columns: repeat(9, minmax(0, 1fr));
+  gap: 1px;
+  background-color: #1a1a1a;
+  border: 2px solid #1a1a1a;
+}
+
+.sudoku-cell {
+  background-color: #f7f5f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  cursor: pointer;
+}
+
+.sudoku-cell:nth-child(3n) {
+  border-right: 2px solid #1a1a1a;
+}
+
+.sudoku-cell:nth-child(n + 19):nth-child(-n + 27),
+.sudoku-cell:nth-child(n + 46):nth-child(-n + 54) {
+  border-bottom: 2px solid #1a1a1a;
+}
+
+.sudoku-grid .sudoku-cell:nth-child(9n) {
+  border-right: none;
+}
+
+.sudoku-cell.selected {
+  background-color: rgba(43, 58, 85, 0.1);
+  outline: 1px solid #2b3a55;
+  outline-offset: -1px;
+  z-index: 10;
+}
+
+.sudoku-cell.fixed {
+  color: #1a1a1a;
+  font-weight: 700;
+}
+
+.sudoku-cell.user-input {
+  color: #2b3a55;
+}
+
+/* Multiplayer sudoku grid */
+.mp-sudoku-grid {
+  border: 2px solid #1a1a1a;
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  grid-template-rows: repeat(9, 1fr);
+  width: fit-content;
+  background-color: #f7f5f0;
+}
+
+.mp-sudoku-cell {
+  width: 64px;
+  height: 64px;
+  border-right: 1px solid #1a1a1a;
+  border-bottom: 1px solid #1a1a1a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 28px;
+  color: #1a1a1a;
+  position: relative;
+  cursor: pointer;
+}
+
+.mp-sudoku-cell:nth-child(3n) {
+  border-right: 2px solid #1a1a1a;
+}
+
+.mp-sudoku-cell:nth-child(9n) {
+  border-right: none;
+}
+
+.mp-sudoku-grid > div:nth-child(n + 19):nth-child(-n + 27),
+.mp-sudoku-grid > div:nth-child(n + 46):nth-child(-n + 54) {
+  border-bottom: 2px solid #1a1a1a;
+}
+
+.mp-sudoku-grid > div:nth-last-child(-n + 9) {
+  border-bottom: none;
+}
+
+.mp-sudoku-cell:hover {
+  background-color: rgba(43, 58, 85, 0.05);
+}
+
+.mp-sudoku-cell.selected {
+  border: 1px solid #2b3a55;
+  background-color: rgba(43, 58, 85, 0.1);
+  z-index: 10;
+}
+
+.mp-sudoku-cell.user-input {
+  color: #2b3a55;
+}
+
+.mp-sudoku-cell.notes {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  font-size: 12px;
+  line-height: 1;
+  color: #7a7875;
+  padding: 2px;
+}
+
+/* Multiplayer numpad button */
+.numpad-btn {
+  border: 1px solid #1a1a1a;
+  background-color: #f7f5f0;
+  color: #1a1a1a;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 24px;
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.numpad-btn:hover {
+  background-color: #1a1a1a;
+  color: #f7f5f0;
+}
+
+/* Move history scrollbar */
+.move-history::-webkit-scrollbar {
+  width: 4px;
+}
+
+.move-history::-webkit-scrollbar-track {
+  background: #f7f5f0;
+  border-left: 1px solid #1a1a1a;
+}
+
+.move-history::-webkit-scrollbar-thumb {
+  background: #1a1a1a;
+}

@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>SUDOKU.LOGIC - Game Over</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;500;600;700&amp;family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-container-high": "#eae8e3",
+                      "on-secondary-fixed-variant": "#474746",
+                      "error-red": "#9E2A2B",
+                      "primary": "#15243e",
+                      "tertiary-fixed-dim": "#dfc38e",
+                      "on-secondary-container": "#636262",
+                      "on-secondary": "#ffffff",
+                      "on-primary-container": "#95a4c4",
+                      "error": "#ba1a1a",
+                      "outline": "#75777e",
+                      "on-background": "#1b1c19",
+                      "surface-container": "#f0eee9",
+                      "secondary": "#5f5e5e",
+                      "error-container": "#ffdad6",
+                      "surface-bright": "#fbf9f4",
+                      "on-tertiary-fixed-variant": "#57441b",
+                      "on-secondary-fixed": "#1c1b1b",
+                      "tertiary-container": "#49370f",
+                      "primary-container": "#2b3a55",
+                      "on-surface": "#1b1c19",
+                      "surface": "#fbf9f4",
+                      "primary-fixed": "#d7e3ff",
+                      "surface-variant": "#e4e2dd",
+                      "on-tertiary-container": "#baa06f",
+                      "on-primary": "#ffffff",
+                      "surface-tint": "#505f7c",
+                      "surface-container-low": "#f5f3ee",
+                      "on-tertiary-fixed": "#261900",
+                      "note-gray": "#7A7875",
+                      "on-primary-fixed-variant": "#384763",
+                      "secondary-fixed": "#e5e2e1",
+                      "surface-container-highest": "#e4e2dd",
+                      "secondary-fixed-dim": "#c8c6c5",
+                      "background": "#fbf9f4",
+                      "inverse-surface": "#30312e",
+                      "inverse-on-surface": "#f2f1ec",
+                      "primary-fixed-dim": "#b7c7e8",
+                      "paper-white": "#F7F5F0",
+                      "surface-dim": "#dbdad5",
+                      "inverse-primary": "#b7c7e8",
+                      "ink-black": "#1A1A1A",
+                      "surface-container-lowest": "#ffffff",
+                      "outline-variant": "#c5c6ce",
+                      "ink-blue": "#2B3A55",
+                      "tertiary": "#312200",
+                      "on-surface-variant": "#44474d",
+                      "on-error": "#ffffff",
+                      "on-primary-fixed": "#0b1b35",
+                      "on-error-container": "#93000a",
+                      "on-tertiary": "#ffffff",
+                      "secondary-container": "#e2dfde",
+                      "tertiary-fixed": "#fddfa8"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "margin-lg": "64px",
+                      "hairline": "1px",
+                      "margin-md": "32px",
+                      "cell-size": "64px",
+                      "grid-unit": "4px",
+                      "margin-sm": "16px"
+              },
+              "fontFamily": {
+                      "grid-notes": [
+                              "JetBrains Mono"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "body-lg": [
+                              "Inter"
+                      ],
+                      "label-mono": [
+                              "JetBrains Mono"
+                      ],
+                      "display-lg": [
+                              "EB Garamond"
+                      ],
+                      "headline-sm": [
+                              "EB Garamond"
+                      ],
+                      "headline-md": [
+                              "EB Garamond"
+                      ],
+                      "grid-number": [
+                              "JetBrains Mono"
+                      ]
+              },
+              "fontSize": {
+                      "grid-notes": [
+                              "12px",
+                              {
+                                      "lineHeight": "12px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-mono": [
+                              "20px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "display-lg": [
+                              "48px",
+                              {
+                                      "lineHeight": "56px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-sm": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "headline-md": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "grid-number": [
+                              "28px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "400"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        /* Custom hairline borders to enforce 1px exactly */
+        .border-hairline { border-width: 1px; }
+        .border-t-hairline { border-top-width: 1px; }
+        .border-b-hairline { border-bottom-width: 1px; }
+        .border-l-hairline { border-left-width: 1px; }
+        .border-r-hairline { border-right-width: 1px; }
+    </style>
+</head>
+<body class="bg-paper-white text-ink-black min-h-screen flex flex-col antialiased">
+<!-- Top Navigation (Shell logic: Suppressed on transactional/game screens to prioritize canvas, but prompt asks to keep quiet analytical tone. I will include it as it's the main entry point to archive/settings, but keep it very minimal) -->
+<!-- The prompt implies a full screen layout, I will omit the TopNavBar to focus strictly on the results canvas as requested "Full screen layout, not a modal". But the system instructions say "You MUST exclude the navigation shell if the page intent is: Linear/Transactional...". Game Over is a transactional end-state. Navigation shell suppressed. -->
+<main class="flex-grow flex flex-col px-margin-sm md:px-margin-lg py-margin-lg max-w-screen-2xl mx-auto w-full">
+<!-- Header Section -->
+<header class="mb-margin-lg">
+<h1 class="font-display-lg text-display-lg text-ink-black mb-grid-unit">Solved in 14:22</h1>
+<p class="font-body-lg text-body-lg text-note-gray">Expert Difficulty • Oct 26, 2024 • Solo Session</p>
+</header>
+<!-- Stats Summary -->
+<section class="border-t-hairline border-b-hairline border-ink-black py-margin-md mb-margin-lg flex flex-row items-center justify-between">
+<div class="flex-1 text-center border-r-hairline border-ink-black last:border-r-0 px-margin-sm">
+<span class="block font-headline-md text-headline-md text-ink-black">14:22</span>
+<span class="block font-label-mono text-label-mono text-note-gray mt-grid-unit text-sm uppercase tracking-widest">Time</span>
+</div>
+<div class="flex-1 text-center border-r-hairline border-ink-black last:border-r-0 px-margin-sm">
+<span class="block font-headline-md text-headline-md text-ink-black">0/3</span>
+<span class="block font-label-mono text-label-mono text-note-gray mt-grid-unit text-sm uppercase tracking-widest">Mistakes</span>
+</div>
+<div class="flex-1 text-center px-margin-sm">
+<span class="block font-headline-md text-headline-md text-ink-black">42</span>
+<span class="block font-label-mono text-label-mono text-note-gray mt-grid-unit text-sm uppercase tracking-widest">Moves</span>
+</div>
+</section>
+<!-- Move History Ledger -->
+<section class="flex-grow overflow-auto mb-margin-lg">
+<h2 class="sr-only">Move History</h2>
+<table class="w-full text-left border-collapse">
+<thead class="sr-only">
+<tr>
+<th>Move Number</th>
+<th>Cell</th>
+<th>Action</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody class="font-grid-notes text-grid-notes text-ink-black">
+<tr class="border-b-hairline border-ink-black group hover:bg-surface-container-high transition-colors duration-150">
+<td class="py-3 px-2 w-16 text-note-gray">1.</td>
+<td class="py-3 px-2 w-24">[R1, C4]</td>
+<td class="py-3 px-2 w-12 text-note-gray">-&gt;</td>
+<td class="py-3 px-2 font-grid-number text-grid-number">7</td>
+</tr>
+<tr class="border-b-hairline border-ink-black group hover:bg-surface-container-high transition-colors duration-150">
+<td class="py-3 px-2 text-note-gray">2.</td>
+<td class="py-3 px-2">[R3, C9]</td>
+<td class="py-3 px-2 text-note-gray">-&gt;</td>
+<td class="py-3 px-2 font-grid-number text-grid-number">2</td>
+</tr>
+<tr class="border-b-hairline border-ink-black group hover:bg-surface-container-high transition-colors duration-150">
+<td class="py-3 px-2 text-note-gray">3.</td>
+<td class="py-3 px-2">[R2, C2]</td>
+<td class="py-3 px-2 text-note-gray">-&gt;</td>
+<td class="py-3 px-2 font-grid-number text-grid-number">5</td>
+</tr>
+<tr class="border-b-hairline border-ink-black group hover:bg-surface-container-high transition-colors duration-150">
+<td class="py-3 px-2 text-note-gray">4.</td>
+<td class="py-3 px-2">[R5, C5]</td>
+<td class="py-3 px-2 text-note-gray">-&gt;</td>
+<td class="py-3 px-2 font-grid-number text-grid-number">9</td>
+</tr>
+<tr class="border-b-hairline border-ink-black group hover:bg-surface-container-high transition-colors duration-150">
+<td class="py-3 px-2 text-note-gray">5.</td>
+<td class="py-3 px-2">[R8, C1]</td>
+<td class="py-3 px-2 text-note-gray">-&gt;</td>
+<td class="py-3 px-2 font-grid-number text-grid-number">1</td>
+</tr>
+<tr class="border-b-hairline border-ink-black group hover:bg-surface-container-high transition-colors duration-150">
+<td class="py-3 px-2 text-note-gray">6.</td>
+<td class="py-3 px-2">[R9, C7]</td>
+<td class="py-3 px-2 text-note-gray">-&gt;</td>
+<td class="py-3 px-2 font-grid-number text-grid-number">4</td>
+</tr>
+<tr class="border-b-hairline border-ink-black group hover:bg-surface-container-high transition-colors duration-150">
+<td class="py-3 px-2 text-note-gray">7.</td>
+<td class="py-3 px-2">[R4, C3]</td>
+<td class="py-3 px-2 text-note-gray">-&gt;</td>
+<td class="py-3 px-2 font-grid-number text-grid-number">8</td>
+</tr>
+<tr class="border-b-hairline border-ink-black group hover:bg-surface-container-high transition-colors duration-150">
+<td class="py-3 px-2 text-note-gray">8.</td>
+<td class="py-3 px-2">[R7, C8]</td>
+<td class="py-3 px-2 text-note-gray">-&gt;</td>
+<td class="py-3 px-2 font-grid-number text-grid-number">3</td>
+</tr>
+<tr class="border-b-hairline border-ink-black group hover:bg-surface-container-high transition-colors duration-150">
+<td class="py-3 px-2 text-note-gray">...</td>
+<td class="py-3 px-2">...</td>
+<td class="py-3 px-2 text-note-gray">...</td>
+<td class="py-3 px-2">...</td>
+</tr>
+<tr class="border-b-hairline border-ink-black group hover:bg-surface-container-high transition-colors duration-150">
+<td class="py-3 px-2 text-note-gray">42.</td>
+<td class="py-3 px-2">[R6, C6]</td>
+<td class="py-3 px-2 text-note-gray">-&gt;</td>
+<td class="py-3 px-2 font-grid-number text-grid-number">6</td>
+</tr>
+</tbody>
+</table>
+</section>
+</main>
+<!-- Action Row (Bottom) -->
+<footer class="mt-auto px-margin-sm md:px-margin-lg max-w-screen-2xl mx-auto w-full pb-margin-lg">
+<nav class="flex flex-col sm:flex-row items-center justify-start border-t-hairline border-b-hairline border-ink-black py-margin-sm">
+<a class="font-label-mono text-label-mono text-ink-black hover:text-note-gray transition-colors uppercase tracking-widest text-sm px-margin-md border-r-hairline border-ink-black last:border-r-0 sm:w-auto w-full text-center sm:text-left py-2 sm:py-0" href="#">Rematch</a>
+<a class="font-label-mono text-label-mono text-ink-black hover:text-note-gray transition-colors uppercase tracking-widest text-sm px-margin-md border-r-hairline border-ink-black last:border-r-0 sm:w-auto w-full text-center sm:text-left py-2 sm:py-0" href="#">New Game</a>
+<a class="font-label-mono text-label-mono text-ink-black hover:text-note-gray transition-colors uppercase tracking-widest text-sm px-margin-md sm:w-auto w-full text-center sm:text-left py-2 sm:py-0" href="#">Back to Archive</a>
+</nav>
+</footer>
+</body></html>

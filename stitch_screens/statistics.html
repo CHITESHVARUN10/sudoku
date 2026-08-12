@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>SUDOKU - Stats</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;500;600;700&amp;family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "outline": "#75777e",
+                      "on-primary-fixed-variant": "#384763",
+                      "on-secondary": "#ffffff",
+                      "surface-dim": "#dbdad5",
+                      "surface-container-low": "#f5f3ee",
+                      "on-tertiary": "#ffffff",
+                      "on-secondary-fixed": "#1c1b1b",
+                      "surface-container": "#f0eee9",
+                      "on-error-container": "#93000a",
+                      "primary": "#15243e",
+                      "surface-tint": "#505f7c",
+                      "primary-container": "#2b3a55",
+                      "outline-variant": "#c5c6ce",
+                      "on-error": "#ffffff",
+                      "on-primary-container": "#95a4c4",
+                      "primary-fixed-dim": "#b7c7e8",
+                      "error-container": "#ffdad6",
+                      "on-tertiary-fixed": "#261900",
+                      "on-surface": "#1b1c19",
+                      "surface": "#fbf9f4",
+                      "on-surface-variant": "#44474d",
+                      "on-primary-fixed": "#0b1b35",
+                      "paper-white": "#F7F5F0",
+                      "ink-black": "#1A1A1A",
+                      "secondary-fixed": "#e5e2e1",
+                      "secondary": "#5f5e5e",
+                      "tertiary-fixed-dim": "#dfc38e",
+                      "background": "#fbf9f4",
+                      "inverse-surface": "#30312e",
+                      "on-primary": "#ffffff",
+                      "on-background": "#1b1c19",
+                      "secondary-container": "#e2dfde",
+                      "error-red": "#9E2A2B",
+                      "on-tertiary-fixed-variant": "#57441b",
+                      "tertiary-fixed": "#fddfa8",
+                      "error": "#ba1a1a",
+                      "tertiary-container": "#49370f",
+                      "surface-variant": "#e4e2dd",
+                      "primary-fixed": "#d7e3ff",
+                      "inverse-on-surface": "#f2f1ec",
+                      "ink-blue": "#2B3A55",
+                      "surface-container-high": "#eae8e3",
+                      "surface-container-lowest": "#ffffff",
+                      "tertiary": "#312200",
+                      "on-tertiary-container": "#baa06f",
+                      "note-gray": "#7A7875",
+                      "surface-bright": "#fbf9f4",
+                      "inverse-primary": "#b7c7e8",
+                      "on-secondary-container": "#636262",
+                      "on-secondary-fixed-variant": "#474746",
+                      "secondary-fixed-dim": "#c8c6c5",
+                      "surface-container-highest": "#e4e2dd"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0px",
+                      "lg": "0px",
+                      "xl": "0px",
+                      "full": "0px"
+              },
+              "spacing": {
+                      "margin-sm": "16px",
+                      "margin-lg": "64px",
+                      "cell-size": "64px",
+                      "hairline": "1px",
+                      "grid-unit": "4px",
+                      "margin-md": "32px"
+              },
+              "fontFamily": {
+                      "grid-notes": [
+                              "JetBrains Mono"
+                      ],
+                      "grid-number": [
+                              "JetBrains Mono"
+                      ],
+                      "display-lg": [
+                              "EB Garamond"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "headline-sm": [
+                              "EB Garamond"
+                      ],
+                      "body-lg": [
+                              "Inter"
+                      ],
+                      "label-mono": [
+                              "JetBrains Mono"
+                      ],
+                      "headline-md": [
+                              "EB Garamond"
+                      ]
+              },
+              "fontSize": {
+                      "grid-notes": [
+                              "12px",
+                              {
+                                      "lineHeight": "12px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "grid-number": [
+                              "28px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "display-lg": [
+                              "48px",
+                              {
+                                      "lineHeight": "56px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-sm": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-mono": [
+                              "20px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "headline-md": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "fontWeight": "500"
+                              }
+                      ]
+              }
+            }
+          }
+        }
+    </script>
+<style>
+        body { background-color: theme('colors.paper-white'); color: theme('colors.ink-black'); }
+    </style>
+</head>
+<body class="antialiased min-h-screen flex flex-col">
+<!-- TopNavBar -->
+<nav class="bg-paper-white dark:bg-ink-black w-full border-b border-ink-black dark:border-paper-white flat no shadows border-b-hairline border-ink-black dark:border-surface-variant z-50">
+<div class="flex justify-between items-center w-full px-margin-lg h-16 max-w-[1440px] mx-auto">
+<div class="font-headline-md text-headline-md font-bold text-ink-black dark:text-paper-white uppercase tracking-tighter cursor-pointer">
+                SUDOKU
+            </div>
+<div class="hidden md:flex items-center gap-8 font-headline-sm text-headline-sm uppercase tracking-wider">
+<a class="text-note-gray dark:text-secondary-fixed-dim hover:text-ink-black dark:hover:text-paper-white hover:bg-surface-variant dark:hover:bg-primary-container transition-colors duration-150 py-2 px-3" href="#">DAILY</a>
+<a class="text-note-gray dark:text-secondary-fixed-dim hover:text-ink-black dark:hover:text-paper-white hover:bg-surface-variant dark:hover:bg-primary-container transition-colors duration-150 py-2 px-3" href="#">ARCHIVE</a>
+<a class="text-ink-black dark:text-paper-white border-b-2 border-ink-black dark:border-paper-white pb-1 hover:bg-surface-variant dark:hover:bg-primary-container transition-colors duration-150 px-3 opacity-80" href="#">STATS</a>
+</div>
+<div class="flex items-center gap-6">
+<button class="font-label-mono text-label-mono border border-ink-black text-ink-black bg-paper-white hover:bg-ink-black hover:text-paper-white px-4 py-2 uppercase transition-colors duration-150">
+                    PLAY NOW
+                </button>
+<div class="flex gap-4">
+<span class="material-symbols-outlined cursor-pointer hover:text-ink-blue transition-colors duration-150">settings</span>
+<span class="material-symbols-outlined cursor-pointer hover:text-ink-blue transition-colors duration-150">help</span>
+</div>
+</div>
+</div>
+</nav>
+<div class="flex flex-1 max-w-[1440px] mx-auto w-full">
+<!-- SideNavBar (Hidden on Mobile, Visible on Desktop for structural layout if needed, but omitted here to focus on content canvas per prompt instructions for focused page) -->
+<!-- Main Content -->
+<main class="flex-1 w-full p-margin-md md:p-margin-lg flex flex-col gap-margin-lg">
+<header>
+<h1 class="font-headline-md text-headline-md uppercase tracking-wider text-ink-black mb-4">YOUR STATS</h1>
+<hr class="border-t-hairline border-ink-black w-full"/>
+</header>
+<!-- Scoreboard -->
+<section class="grid grid-cols-2 md:grid-cols-4 border-b-hairline border-ink-black pb-margin-sm gap-y-8">
+<div class="flex flex-col border-r-hairline border-ink-black px-4 first:pl-0">
+<span class="font-body-md text-body-md text-note-gray uppercase tracking-widest mb-2">Games Played</span>
+<span class="font-grid-number text-grid-number text-ink-black">1,248</span>
+</div>
+<div class="flex flex-col md:border-r-hairline border-ink-black px-4">
+<span class="font-body-md text-body-md text-note-gray uppercase tracking-widest mb-2">Win Rate</span>
+<span class="font-grid-number text-grid-number text-ink-black">94.2%</span>
+</div>
+<div class="flex flex-col border-r-hairline border-ink-black px-4 pl-0 md:pl-4">
+<span class="font-body-md text-body-md text-note-gray uppercase tracking-widest mb-2">Avg. Time</span>
+<span class="font-grid-number text-grid-number text-ink-black">04:12</span>
+</div>
+<div class="flex flex-col px-4">
+<span class="font-body-md text-body-md text-note-gray uppercase tracking-widest mb-2">Current Streak</span>
+<span class="font-grid-number text-grid-number text-ink-black">14 Days</span>
+</div>
+</section>
+<!-- Charts & Breakdown -->
+<section class="grid grid-cols-1 lg:grid-cols-2 gap-margin-lg">
+<!-- Solve Time Chart -->
+<div class="flex flex-col">
+<h2 class="font-headline-sm text-headline-sm text-ink-black mb-6 uppercase border-b-hairline border-ink-black pb-2">Solve Time Trend</h2>
+<div class="relative w-full h-[300px] border-l-hairline border-b-hairline border-ink-black mt-4">
+<!-- Faint Gridlines -->
+<div class="absolute inset-0 flex flex-col justify-between">
+<div class="w-full h-hairline bg-note-gray opacity-20"></div>
+<div class="w-full h-hairline bg-note-gray opacity-20"></div>
+<div class="w-full h-hairline bg-note-gray opacity-20"></div>
+<div class="w-full h-hairline bg-note-gray opacity-20"></div>
+<div class="w-full h-hairline bg-note-gray opacity-20"></div>
+</div>
+<!-- Mock Line Chart SVG -->
+<svg class="absolute inset-0 w-full h-full" preserveaspectratio="none" viewbox="0 0 100 100">
+<polyline fill="none" points="0,80 20,60 40,70 60,30 80,45 100,20" stroke="#1A1A1A" stroke-width="0.5" vector-effect="non-scaling-stroke"></polyline>
+</svg>
+<!-- Axis Labels -->
+<div class="absolute -left-10 top-0 font-label-mono text-label-mono text-[10px] text-note-gray">10m</div>
+<div class="absolute -left-10 bottom-0 font-label-mono text-label-mono text-[10px] text-note-gray">0m</div>
+<div class="absolute left-0 -bottom-6 font-label-mono text-label-mono text-[10px] text-note-gray">Mon</div>
+<div class="absolute right-0 -bottom-6 font-label-mono text-label-mono text-[10px] text-note-gray">Sun</div>
+</div>
+</div>
+<!-- Difficulty Breakdown -->
+<div class="flex flex-col">
+<h2 class="font-headline-sm text-headline-sm text-ink-black mb-6 uppercase border-b-hairline border-ink-black pb-2">Difficulty Breakdown</h2>
+<div class="flex flex-col gap-6 mt-4">
+<!-- Easy -->
+<div class="flex flex-col gap-2">
+<div class="flex justify-between font-label-mono text-label-mono text-[14px]">
+<span>Easy</span>
+<span>450 Games</span>
+</div>
+<div class="w-full h-4 bg-surface-variant border-hairline border-ink-black relative">
+<div class="absolute top-0 left-0 h-full bg-ink-black" style="width: 35%;"></div>
+</div>
+</div>
+<!-- Medium -->
+<div class="flex flex-col gap-2">
+<div class="flex justify-between font-label-mono text-label-mono text-[14px]">
+<span>Medium</span>
+<span>520 Games</span>
+</div>
+<div class="w-full h-4 bg-surface-variant border-hairline border-ink-black relative">
+<div class="absolute top-0 left-0 h-full bg-ink-black" style="width: 42%;"></div>
+</div>
+</div>
+<!-- Hard -->
+<div class="flex flex-col gap-2">
+<div class="flex justify-between font-label-mono text-label-mono text-[14px]">
+<span>Hard</span>
+<span>210 Games</span>
+</div>
+<div class="w-full h-4 bg-surface-variant border-hairline border-ink-black relative">
+<div class="absolute top-0 left-0 h-full bg-ink-black" style="width: 18%;"></div>
+</div>
+</div>
+<!-- Expert -->
+<div class="flex flex-col gap-2">
+<div class="flex justify-between font-label-mono text-label-mono text-[14px]">
+<span>Expert</span>
+<span>68 Games</span>
+</div>
+<div class="w-full h-4 bg-surface-variant border-hairline border-ink-black relative">
+<div class="absolute top-0 left-0 h-full bg-ink-black" style="width: 5%;"></div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Recent Games Table -->
+<section class="mt-8">
+<h2 class="font-headline-sm text-headline-sm text-ink-black mb-6 uppercase border-b-hairline border-ink-black pb-2">Recent Games</h2>
+<div class="overflow-x-auto w-full">
+<table class="w-full text-left font-label-mono text-label-mono text-[14px] border-collapse">
+<thead>
+<tr class="border-b-hairline border-ink-black text-note-gray">
+<th class="py-4 px-2 font-normal">Date</th>
+<th class="py-4 px-2 font-normal">Mode</th>
+<th class="py-4 px-2 font-normal">Difficulty</th>
+<th class="py-4 px-2 font-normal">Opponent/Solo</th>
+<th class="py-4 px-2 font-normal">Result</th>
+<th class="py-4 px-2 font-normal text-right">Time</th>
+</tr>
+</thead>
+<tbody>
+<tr class="border-b-hairline border-ink-black hover:bg-surface-variant transition-colors duration-150">
+<td class="py-4 px-2">2024-10-24</td>
+<td class="py-4 px-2">Daily</td>
+<td class="py-4 px-2">Medium</td>
+<td class="py-4 px-2">Solo</td>
+<td class="py-4 px-2">Win</td>
+<td class="py-4 px-2 text-right">03:45</td>
+</tr>
+<tr class="border-b-hairline border-ink-black hover:bg-surface-variant transition-colors duration-150">
+<td class="py-4 px-2">2024-10-23</td>
+<td class="py-4 px-2">Multiplayer</td>
+<td class="py-4 px-2">Hard</td>
+<td class="py-4 px-2">LogicMaster99</td>
+<td class="py-4 px-2">Loss</td>
+<td class="py-4 px-2 text-right">08:12</td>
+</tr>
+<tr class="border-b-hairline border-ink-black hover:bg-surface-variant transition-colors duration-150">
+<td class="py-4 px-2">2024-10-23</td>
+<td class="py-4 px-2">Archive</td>
+<td class="py-4 px-2">Expert</td>
+<td class="py-4 px-2">Solo</td>
+<td class="py-4 px-2">Win</td>
+<td class="py-4 px-2 text-right">14:30</td>
+</tr>
+<tr class="border-b-hairline border-ink-black hover:bg-surface-variant transition-colors duration-150">
+<td class="py-4 px-2">2024-10-22</td>
+<td class="py-4 px-2">Daily</td>
+<td class="py-4 px-2">Easy</td>
+<td class="py-4 px-2">Solo</td>
+<td class="py-4 px-2">Win</td>
+<td class="py-4 px-2 text-right">01:55</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</main>
+</div>
+<!-- Footer -->
+<footer class="bg-paper-white dark:bg-ink-black w-full border-t border-ink-black dark:border-paper-white border-t-hairline border-ink-black dark:border-surface-variant mt-auto">
+<div class="w-full py-margin-md px-margin-lg border-t border-ink-black flex justify-between items-center max-w-[1440px] mx-auto opacity-100">
+<span class="font-label-mono text-label-mono text-note-gray dark:text-secondary-fixed-dim">© 2024 Editorial Sudoku. All Rights Reserved.</span>
+<div class="flex gap-6 font-label-mono text-label-mono text-[14px]">
+<a class="text-note-gray dark:text-secondary-fixed-dim hover:text-ink-black dark:hover:text-paper-white transition-colors duration-150" href="#">Privacy Policy</a>
+<a class="text-note-gray dark:text-secondary-fixed-dim hover:text-ink-black dark:hover:text-paper-white transition-colors duration-150" href="#">Terms of Service</a>
+<a class="text-note-gray dark:text-secondary-fixed-dim hover:text-ink-black dark:hover:text-paper-white transition-colors duration-150" href="#">Accessibility</a>
+</div>
+</div>
+</footer>
+</body></html>
