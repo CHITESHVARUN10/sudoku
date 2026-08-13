@@ -3,6 +3,7 @@ const app = express();
 const dotenv = require('dotenv');
 const cors = require('cors');
 const session = require('express-session');
+  const connectDB = require('./db');
 
 // import apiRoutes from './routes/api.js';
 // import { errorHandler } from './middleware/errorHandler.js';
@@ -26,14 +27,15 @@ app.use(express.json()); // Parses incoming JSON requests
 app.use(express.urlencoded({ extended: true })); // Parses URL-encoded data
 
 // API Routes
+app.use('/auth/user',require('./routes/auth/user'))
 // app.use('/api/v1', apiRoutes);
 
 // Fallback Route for Undefined Enpoints (404)
-app.use((req, res, next) => {
-  res.status(404);
-  const error = new Error(`Not Found - ${req.originalUrl}`);
-  next(error);
-});
+// app.use((req, res, next) => {
+//   res.status(404);
+//   const error = new Error(`Not Found - ${req.originalUrl}`);
+//   next(error);
+// });
 
 // Centralized Error Handler Middleware
 // app.use(errorHandler);
@@ -43,6 +45,7 @@ app.get('/', (req, res) => {
   res.send('API is running...');
 });
 // Start the server
-app.listen(PORT, () => {
+app.listen(PORT,async () => {
+    await connectDB();
   console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
 });

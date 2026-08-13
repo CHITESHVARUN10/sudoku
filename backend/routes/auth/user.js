@@ -1,6 +1,6 @@
 const express = require('express');
 const Router = express.Router();
-const bcrypt = require('bcryptjs');
+const bcrypt = require('bcrypt');
 const passport = require('passport');
 const LocalStrategy = require('passport-local').Strategy;
 const User = require('../../models/User');
@@ -34,7 +34,7 @@ passport.use('user-local-login', new LocalStrategy({
   }));
 
   
-  Router.post('/login', (req, res, next) => {
+  Router.post('/login',async (req, res, next) => {
     passport.authenticate('user-local-login', (err, user, info) => {
         if (err) {  res.status(500).json({ success: false, message: 'An error occurred during login.' }); }
         if (!user) { return res.status(400).json({ success: false, message: 'Invalid email or password.' }); }  
