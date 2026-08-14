@@ -68,6 +68,14 @@ const gameSchema = new Schema(
         message: 'Initial board must contain exactly 81 cells',
       },
     },
+    // The full solved grid, used to validate moves / reveal hints.
+    solution: {
+      type: [cellSchema],
+      validate: {
+        validator: (arr) => arr.length === 81,
+        message: 'Solution must contain exactly 81 cells',
+      },
+    },
     // Parallel 81-cell array; each entry is the set of pencil marks for that cell
     notes: {
       type: [noteSetSchema],
@@ -87,6 +95,22 @@ const gameSchema = new Schema(
       min: 0,
     },
     mistakes: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    // Solo scoring (same rules as multiplayer: correct +10, wrong -15, completion +50).
+    // Negative scores are possible (wrong moves deduct), so no min floor.
+    score: {
+      type: Number,
+      default: 0,
+    },
+    powerUpsTotal: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    powerUpsUsed: {
       type: Number,
       default: 0,
       min: 0,

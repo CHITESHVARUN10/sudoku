@@ -9,11 +9,21 @@ function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    register({ name, email });
-    navigate("/");
+    setError("");
+    setSubmitting(true);
+    try {
+      await register(name, email, password);
+      navigate("/");
+    } catch (err) {
+      setError(err.message || "Registration failed. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -110,13 +120,23 @@ function RegisterPage() {
                     Minimum 8 characters
                   </p>
                 </div>
+                {/* API Error */}
+                {error && (
+                  <p
+                    className="font-body-md text-body-md text-error-red border border-error-red bg-error-red/10 px-3 py-2"
+                    role="alert"
+                  >
+                    {error}
+                  </p>
+                )}
                 {/* Submit Button */}
                 <div className="pt-4">
                   <button
-                    className="w-full bg-ink-black text-surface font-label-mono text-label-mono uppercase tracking-[0.2em] py-4 px-6 hover:bg-opacity-90 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ink-black"
+                    className="w-full bg-ink-black text-surface font-label-mono text-label-mono uppercase tracking-[0.2em] py-4 px-6 hover:bg-opacity-90 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ink-black disabled:opacity-50 disabled:cursor-not-allowed"
                     type="submit"
+                    disabled={submitting}
                   >
-                    Create Account
+                    {submitting ? "CREATING…" : "Create Account"}
                   </button>
                 </div>
               </form>

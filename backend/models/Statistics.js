@@ -75,6 +75,19 @@ const statisticsSchema = new Schema(
       type: [trendPointSchema],
       default: [],
     },
+    // Elo snapshots over time (for the elo history chart).
+    eloHistory: {
+      type: [
+        new Schema(
+          {
+            date: { type: Date, required: true },
+            elo: { type: Number, required: true, min: 0 },
+          },
+          { _id: false }
+        ),
+      ],
+      default: [],
+    },
   },
   {
     timestamps: true,

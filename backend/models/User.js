@@ -40,6 +40,16 @@ const userSchema = new Schema(
       enum: ['user', 'admin'],
       default: 'user',
     },
+    // Hashed password-reset token + expiry (for forgot/reset flow).
+    passwordResetToken: {
+      type: String,
+      select: false,
+      default: null,
+    },
+    passwordResetExpires: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,

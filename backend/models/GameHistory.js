@@ -61,6 +61,21 @@ const gameHistorySchema = new Schema(
       default: 0,
       min: 0,
     },
+    // Points earned in the game (solo or multiplayer scoring).
+    score: {
+      type: Number,
+      default: 0,
+    },
+    // Elo change applied (multiplayer only).
+    eloDelta: {
+      type: Number,
+      default: 0,
+    },
+    powerUpsUsed: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
   },
   {
     timestamps: true,

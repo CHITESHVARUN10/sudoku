@@ -32,6 +32,10 @@ const moveSchema = new Schema(
       type: Boolean,
       default: false,
     },
+    isPowerUp: {
+      type: Boolean,
+      default: false,
+    },
     timestamp: {
       type: Date,
       default: Date.now,
@@ -62,6 +66,20 @@ const matchSchema = new Schema(
       enum: ['Easy', 'Medium', 'Hard', 'Expert'],
       default: 'Medium',
     },
+    // The clue count chosen at room creation (the difficulty band value).
+    clueCount: {
+      type: Number,
+      min: 17,
+      max: 40,
+      default: 33,
+    },
+    // Chess clock minutes per player; 0 = no timer.
+    timerMinPerPlayer: {
+      type: Number,
+      min: 0,
+      max: 15,
+      default: 0,
+    },
     board: {
       type: [cellSchema],
       validate: {
@@ -74,6 +92,14 @@ const matchSchema = new Schema(
       validate: {
         validator: (arr) => arr.length === 81,
         message: 'Initial board must contain exactly 81 cells',
+      },
+    },
+    // The full solved grid, used to validate moves / reveal power-ups.
+    solution: {
+      type: [cellSchema],
+      validate: {
+        validator: (arr) => arr.length === 81,
+        message: 'Solution must contain exactly 81 cells',
       },
     },
     // Whose turn it is: 1 = player1, 2 = player2
@@ -91,6 +117,31 @@ const matchSchema = new Schema(
       type: [moveSchema],
       default: [],
     },
+    scores: {
+      // Negative allowed (wrong moves deduct).
+      p1: { type: Number, default: 0 },
+      p2: { type: Number, default: 0 },
+    },
+    // Remaining power-ups per player.
+    powerUpsLeft: {
+      p1: { type: Number, default: 0, min: 0 },
+      p2: { type: Number, default: 0, min: 0 },
+    },
+    // Remaining clock seconds per player (set from timerMinPerPlayer at start).
+    clocks: {
+      p1: { type: Number, default: 0, min: 0 },
+      p2: { type: Number, default: 0, min: 0 },
+    },
+    // When the last move happened (for accurate clock decrement).
+    lastMoveAt: {
+      type: Date,
+      default: null,
+    },
+    // Set when a player disconnects mid-match (clock pauses for them).
+    disconnectedAt: {
+      p1: { type: Date, default: null },
+      p2: { type: Date, default: null },
+    },
     status: {
       type: String,
       enum: ['waiting', 'active', 'completed', 'abandoned'],
@@ -100,6 +151,11 @@ const matchSchema = new Schema(
       type: Schema.Types.ObjectId,
       ref: 'User',
       default: null,
+    },
+    // Elo change applied on completion (positive for the winner).
+    eloDelta: {
+      type: Number,
+      default: 0,
     },
     startedAt: {
       type: Date,

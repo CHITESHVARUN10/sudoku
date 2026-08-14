@@ -28,6 +28,27 @@ const roomSchema = new Schema(
       enum: ['Easy', 'Medium', 'Hard', 'Expert'],
       default: 'Medium',
     },
+    // The clue count chosen by the host (the difficulty band value).
+    clueCount: {
+      type: Number,
+      min: 17,
+      max: 40,
+      default: 33,
+    },
+    // Max power-ups per player; 0 = disabled.
+    powerUpsPerPlayer: {
+      type: Number,
+      min: 0,
+      max: 3,
+      default: 3,
+    },
+    // Chess clock minutes per player; 0 = no timer.
+    timerMinPerPlayer: {
+      type: Number,
+      min: 0,
+      max: 15,
+      default: 0,
+    },
     status: {
       type: String,
       enum: ['waiting', 'full', 'started', 'cancelled'],
@@ -50,5 +71,7 @@ const roomSchema = new Schema(
 
 roomSchema.index({ status: 1, createdAt: -1 });
 roomSchema.index({ host: 1, status: 1 });
+// Auto-remove rooms once they expire (5 minutes after creation).
+roomSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 module.exports = mongoose.model('Room', roomSchema);

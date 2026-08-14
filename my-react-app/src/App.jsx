@@ -7,6 +7,8 @@ import MultiplayerSetupModalPage from "./pages/MultiplayerSetupModalPage";
 import MultiplayerGameBoardPage from "./pages/MultiplayerGameBoardPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 import AccountSettingsPage from "./pages/AccountSettingsPage";
 import PageNotFoundPage from "./pages/PageNotFoundPage";
 import HowToPlayPage from "./pages/HowToPlayPage";
@@ -30,6 +32,8 @@ function App() {
           <Route path="/multiplayer/waiting" element={<WaitingRoomPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
           <Route path="/settings" element={<AccountSettingsPage />} />
           <Route path="/how-to-play" element={<HowToPlayPage />} />
           <Route path="/stats" element={<StatisticsPage />} />

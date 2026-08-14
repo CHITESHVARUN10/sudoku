@@ -1,28 +1,102 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
+import { useAuth } from "../auth/AuthContext";
+import { createMockSocket } from "../api/mockSocket";
 
-// 81 cells matching the HTML; user-input marks cells in ink-blue
-const INITIAL_GRID = [
-  "5", "3", null, "7", null, null, null, null, null,
-  "6", null, null, null, "1", "9", "5", null, null,
-  null, "9", "8", null, null, null, null, "6", null,
-  "8", null, null, "6", null, null, null, null, "3",
-  "4", null, "8", null, "3", null, "1", null, "6",
-  "7", null, null, null, null, "2", null, null, "6",
-  null, "6", null, null, null, null, "2", "8", null,
-  null, null, "4", "1", "9", null, null, null, "5",
-  null, null, null, null, null, "8", null, "7", "9",
-];
-
-const MOVE_HISTORY = [
-  { num: 1, p1: "R1C3 → 8", p2: "R2C2 → 4" },
-  { num: 2, p1: "R3C1 → 2", p2: "R5C2 → 7" },
-  { num: 3, p1: "R8C2 → 3", p2: "R9C1 → 1" },
-  { num: 4, p1: "R4C2 → 5", p2: null },
-];
+function formatClock(sec) {
+  if (sec == null) return "--:--";
+  const m = String(Math.floor(sec / 60)).padStart(2, "0");
+  const s = String(Math.floor(sec % 60)).padStart(2, "0");
+  return `${m}:${s}`;
+}
 
 function MultiplayerGameBoardPage() {
-  const [selected, setSelected] = useState(32); // matching HTML: cell 33 (0-indexed 32) is selected
+  const { user } = useAuth();
+  const location = useLocation();
+  const settings = location.state?.settings || null;
+
+  const [match, setMatch] = useState(null);
+  const [selected, setSelected] = useState(null);
+  const [notesMode, setNotesMode] = useState(false);
+  const [connected, setConnected] = useState(true);
+  const [oppDisconnected, setOppDisconnected] = useState(false);
+  const [result, setResult] = useState(null);
+  const [powerUpArmed, setPowerUpArmed] = useState(false);
+
+  const socketRef = useRef(null);
+
+  // Live clocks: tick every second, decrement the active player's clock.
+  const [clocks, setClocks] = useState({ p1: 0, p2: 0 });
+  useEffect(() => {
+    if (!match || match.status !== "active") return;
+    const interval = setInterval(() => {
+      setClocks((prev) => {
+        const active = match.turn === 1 ? "p1" : "p2";
+        const next = { ...prev, [active]: Math.max(0, (prev[active] || 0) - 1) };
+        return next;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [match?.turn, match?.status, match]);
+
+  // Set up the socket connection (mock for now).
+  useEffect(() => {
+    const socket = createMockSocket({
+      onStart: (data) => {
+        setMatch(data);
+        setClocks({ p1: data.clocks?.p1 ?? 300, p2: data.clocks?.p2 ?? 300 });
+        setConnected(true);
+        setResult(null);
+        setPowerUpArmed(false);
+      },
+      onState: (data) => {
+        setMatch(data);
+        setClocks((prev) => ({
+          p1: data.clocks?.p1 ?? prev.p1,
+          p2: data.clocks?.p2 ?? prev.p2,
+        }));
+      },
+      onEnd: (data) => {
+        setMatch((m) => (m ? { ...m, status: "completed" } : m));
+        setResult(data);
+      },
+      onOppDisconnect: () => setOppDisconnected(true),
+      onOppReconnect: () => setOppDisconnected(false),
+    });
+    socketRef.current = socket;
+    return () => socket.destroy();
+  }, []);
+
+  const myPlayerNumber = 1; // host is player 1
+  const me = user?.name || "John Doe";
+  const opponentName = match?.players?.[1]?.name || "Opponent";
+  const myTurn = match ? match.turn === myPlayerNumber : true;
+  const canAct = connected && match?.status === "active" && myTurn;
+
+  const handleCellClick = (index) => {
+    if (!canAct) return;
+    if (match.board[index] !== null) return;
+    setSelected(index);
+  };
+
+  const handleNumpad = (value) => {
+    if (!canAct || selected == null) return;
+    const socket = socketRef.current;
+    if (powerUpArmed) {
+      socket.sendPowerUp(selected);
+      setPowerUpArmed(false);
+      setSelected(null);
+    } else {
+      socket.sendMove(selected, value);
+      setSelected(null);
+    }
+  };
+
+  const handleResign = () => {
+    socketRef.current?.resign();
+  };
+
+  const grid = match?.board || [];
 
   return (
     <>
@@ -68,14 +142,14 @@ function MultiplayerGameBoardPage() {
         <div className="px-6 mb-8 flex flex-col items-center">
           <div className="w-16 h-16 rounded-full border border-ink-black overflow-hidden mb-4">
             <div className="w-full h-full flex items-center justify-center bg-surface-container font-headline-sm text-headline-sm text-ink-black">
-              GM
+              {me.slice(0, 2).toUpperCase()}
             </div>
           </div>
           <h3 className="font-headline-sm text-headline-sm font-bold text-ink-black">
-            Grandmaster
+            {me}
           </h3>
           <p className="font-label-mono text-[14px] text-secondary mt-1">
-            Elo: 2450
+            Elo: {user?.elo || 1200}
           </p>
         </div>
         <nav className="flex-1 flex flex-col w-full">
@@ -123,42 +197,104 @@ function MultiplayerGameBoardPage() {
         {/* Match Header */}
         <div className="w-full border-b border-ink-black pb-4 mb-8 flex justify-between items-end">
           <div className="flex items-center gap-3">
-            <span className="font-headline-sm text-headline-sm font-bold bg-ink-black text-paper-white px-3 py-1">
-              Player 1
+            <span
+              className={`font-headline-sm text-headline-sm font-bold px-3 py-1 border-2 transition-colors ${
+                myTurn && match?.status === "active"
+                  ? "bg-ink-black text-paper-white border-ink-black"
+                  : "text-ink-black border-transparent"
+              }`}
+            >
+              {me}
+            </span>
+            <span className="font-label-mono text-label-mono text-secondary">
+              {formatClock(clocks.p1)}
             </span>
           </div>
           <div className="flex flex-col items-center justify-center">
             <span className="font-label-mono text-[12px] uppercase tracking-widest text-secondary mb-1">
               Difficulty
             </span>
-            <span className="font-headline-md text-[24px] font-bold">HARD</span>
+            <span className="font-headline-md text-[24px] font-bold">
+              {match?.difficulty || settings?.difficulty || "HARD"}
+            </span>
+            {match?.clueCount && (
+              <span className="font-label-mono text-[12px] text-secondary">
+                {match.clueCount} clues
+              </span>
+            )}
             <div className="h-4 w-px bg-ink-black my-2"></div>
             <span className="font-label-mono text-[14px] uppercase tracking-widest text-ink-blue font-bold">
-              TURN 14
+              TURN {match?.turnNumber || 1}
             </span>
+            <div className="flex gap-6 mt-2 font-label-mono text-[14px]">
+              <span className="text-ink-black">
+                You: <b>{match?.scores?.p1 ?? 0}</b>
+              </span>
+              <span className="text-secondary">
+                Opp: <b>{match?.scores?.p2 ?? 0}</b>
+              </span>
+            </div>
           </div>
           <div className="flex items-center gap-3">
-            <span className="font-headline-sm text-headline-sm font-bold text-ink-black px-3 py-1 border-b border-transparent">
-              Player 2
+            <span className="font-label-mono text-label-mono text-secondary">
+              {formatClock(clocks.p2)}
+            </span>
+            <span
+              className={`font-headline-sm text-headline-sm font-bold px-3 py-1 border-2 transition-colors ${
+                !myTurn && match?.status === "active"
+                  ? "bg-ink-black text-paper-white border-ink-black"
+                  : "text-ink-black border-transparent"
+              }`}
+            >
+              {opponentName}
             </span>
           </div>
         </div>
+
+        {/* Connection banners */}
+        {!connected && (
+          <div className="mb-4 border-2 border-ink-black bg-surface-variant p-3 font-label-mono text-label-mono uppercase tracking-widest text-ink-black">
+            Disconnected — reconnecting…
+          </div>
+        )}
+        {oppDisconnected && match?.status === "active" && (
+          <div className="mb-4 border-2 border-ink-black bg-surface-variant p-3 font-label-mono text-label-mono uppercase tracking-widest text-secondary">
+            Opponent disconnected — their clock is paused.
+          </div>
+        )}
+        {result && (
+          <div className="mb-4 border-2 border-ink-black bg-ink-black text-paper-white p-4 font-label-mono text-label-mono uppercase tracking-widest">
+            {result.winner === "me" ? "You win" : "You lose"} — {result.reason}
+            {result.eloDelta ? ` · Elo ±${result.eloDelta}` : ""}
+            <Link
+              to="/multiplayer"
+              className="ml-4 underline hover:text-ink-blue"
+            >
+              New Match
+            </Link>
+          </div>
+        )}
 
         {/* Game Area Layout */}
         <div className="flex flex-col lg:flex-row gap-margin-lg items-start justify-center">
           {/* The Board */}
           <div className="mp-sudoku-grid mx-auto lg:mx-0">
-            {INITIAL_GRID.map((value, index) => (
-              <div
-                key={index}
-                className={`mp-sudoku-cell ${
-                  selected === index ? "selected" : ""
-                }`}
-                onClick={() => setSelected(index)}
-              >
-                {value}
-              </div>
-            ))}
+            {Array.from({ length: 81 }, (_, index) => {
+              const value = grid[index];
+              const isInitial = match?.initialBoard?.[index] != null;
+              const isSelected = selected === index;
+              return (
+                <div
+                  key={index}
+                  className={`mp-sudoku-cell ${
+                    isSelected ? "selected" : ""
+                  } ${isInitial ? "" : "user-input"}`}
+                  onClick={() => handleCellClick(index)}
+                >
+                  {value ?? ""}
+                </div>
+              );
+            })}
           </div>
 
           {/* Controls & Log Sidebar */}
@@ -168,6 +304,7 @@ function MultiplayerGameBoardPage() {
               {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((num, i) => (
                 <button
                   key={num}
+                  onClick={() => handleNumpad(Number(num))}
                   className={`numpad-btn ${i < 6 ? "border-b" : ""} ${
                     i % 3 !== 2 ? "border-r" : "border-transparent"
                   }`}
@@ -179,17 +316,41 @@ function MultiplayerGameBoardPage() {
 
             {/* Tool Actions */}
             <div className="flex gap-4 border-b border-ink-black pb-4">
-              <button className="flex items-center gap-2 text-ink-black hover:text-ink-blue font-label-mono text-[14px]">
+              <button
+                className={`flex items-center gap-2 font-label-mono text-[14px] transition-colors ${
+                  notesMode
+                    ? "text-ink-blue"
+                    : "text-ink-black hover:text-ink-blue"
+                }`}
+                onClick={() => setNotesMode(!notesMode)}
+              >
                 <span className="material-symbols-outlined text-[20px]">edit</span>
                 Notes
               </button>
-              <button className="flex items-center gap-2 text-ink-black hover:text-ink-blue font-label-mono text-[14px]">
-                <span className="material-symbols-outlined text-[20px]">undo</span>
-                Undo
-              </button>
-              <button className="flex items-center gap-2 text-ink-black hover:text-ink-blue font-label-mono text-[14px]">
+              <button
+                className={`flex items-center gap-2 font-label-mono text-[14px] transition-colors ${
+                  powerUpArmed
+                    ? "text-ink-blue"
+                    : "text-ink-black hover:text-ink-blue"
+                }`}
+                onClick={() => setPowerUpArmed(!powerUpArmed)}
+                disabled={!match || match.powerUpsLeft?.p1 <= 0}
+              >
                 <span className="material-symbols-outlined text-[20px]">lightbulb</span>
-                Hint
+                Power-up
+                {match?.powerUpsMax ? (
+                  <span className="text-secondary">
+                    ({match.powerUpsLeft.p1}/{match.powerUpsMax})
+                  </span>
+                ) : null}
+              </button>
+              <button
+                className="flex items-center gap-2 text-error-red hover:text-ink-black font-label-mono text-[14px]"
+                onClick={handleResign}
+                disabled={!match || match.status !== "active"}
+              >
+                <span className="material-symbols-outlined text-[20px]">flag</span>
+                Resign
               </button>
             </div>
 
@@ -197,31 +358,30 @@ function MultiplayerGameBoardPage() {
             <div className="flex flex-col border border-ink-black h-64 bg-paper-white">
               <div className="grid grid-cols-2 border-b border-ink-black font-label-mono text-[12px] uppercase tracking-wider bg-surface-container-highest">
                 <div className="p-2 border-r border-ink-black text-center font-bold">
-                  Player 1
+                  {me}
                 </div>
-                <div className="p-2 text-center">Player 2</div>
+                <div className="p-2 text-center">{opponentName}</div>
               </div>
               <div className="move-history flex-1 overflow-y-auto p-0 m-0 font-label-mono text-[14px]">
-                {MOVE_HISTORY.map((entry) => (
+                {(match?.moveHistory || []).map((entry, i) => (
                   <div
-                    key={entry.num}
+                    key={i}
                     className="grid grid-cols-[30px_1fr_1fr] border-b border-ink-black/20 hover:bg-surface-container-low"
                   >
                     <div className="p-2 text-secondary text-right text-[12px]">
                       {entry.num}.
                     </div>
                     <div className="p-2 border-r border-ink-black/20 text-center">
-                      {entry.p1}
+                      {entry.p1 || ""}
                     </div>
-                    <div
-                      className={`p-2 text-center ${
-                        entry.p2 === "..." ? "text-ink-blue" : ""
-                      }`}
-                    >
-                      {entry.p2}
-                    </div>
+                    <div className="p-2 text-center">{entry.p2 || ""}</div>
                   </div>
                 ))}
+                {!match?.moveHistory?.length && (
+                  <div className="p-4 text-center text-secondary text-[12px]">
+                    No moves yet.
+                  </div>
+                )}
               </div>
             </div>
           </div>

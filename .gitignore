@@ -30,6 +30,10 @@ node_modules/
 .agents/
 **/.agents/
 .agents
+.devlens/
+**/.devlens/
+.devlens/
+.devlens
 
 # Build & Output directories
 dist/
@@ -43,6 +47,9 @@ build/
 .env.local
 .env.*.local
 *.env
+.npm-tmp-cache/
+**/.npm-tmp-cache/
+.npm-tmp-cache
 
 # IDE & OS Metadata
 .vscode/

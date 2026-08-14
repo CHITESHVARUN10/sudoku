@@ -25,6 +25,12 @@ const leaderboardEntrySchema = new Schema(
       max: 100,
       default: 0,
     },
+    // Current elo snapshot (leaderboard ranks by this).
+    elo: {
+      type: Number,
+      default: 1200,
+      min: 0,
+    },
     gamesPlayed: {
       type: Number,
       min: 0,
