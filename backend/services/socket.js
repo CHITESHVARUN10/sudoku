@@ -16,22 +16,86 @@ const roomPresence = new Map();
 // each operation so they run one at a time per match.
 const matchQueues = new Map();
 
-function enqueueMatchOp(matchId, fn) {
-  const prev = matchQueues.get(matchId) || Promise.resolve();
+// Per-room serialization queue so startMatch runs exactly once per room.
+const roomQueues = new Map();
+
+function enqueueOp(queueMap, key, fn) {
+  const prev = queueMap.get(key) || Promise.resolve();
   const next = prev.then(fn, fn);
-  matchQueues.set(matchId, next);
-  // Clean up the queue entry when it settles.
+  queueMap.set(key, next);
   next.finally(() => {
-    if (matchQueues.get(matchId) === next) matchQueues.delete(matchId);
+    if (queueMap.get(key) === next) queueMap.delete(key);
   });
   return next;
 }
 
-// Generate a room code like "SD-882-QX".
+function enqueueMatchOp(matchId, fn) {
+  return enqueueOp(matchQueues, matchId, fn);
+}
+
+function enqueueRoomOp(roomId, fn) {
+  return enqueueOp(roomQueues, roomId, fn);
+}
+
+// Generate a room code like "SD-882-31".
 function generateRoomCode() {
   const a = Math.floor(100 + Math.random() * 900);
   const b = Math.floor(10 + Math.random() * 90);
   return `SD-${a}-${b}`;
+}
+
+// 81-cell status array: null = empty, 'given' = initial clue, 'locked' =
+// correctly solved (cannot change), 'wrong' = filled but incorrect.
+function buildCellStatus(match) {
+  return match.board.map((v, i) => {
+    if (v == null) return null;
+    if (match.initialBoard[i] != null) return 'given';
+    if (v === match.solution[i]) return 'locked';
+    return 'wrong';
+  });
+}
+
+// A cell cannot be overwritten once it holds the correct value.
+function isLockedCell(match, cell) {
+  if (match.initialBoard[cell] != null) return true;
+  return match.moveHistory.some(
+    (m) => m.cell === cell && (m.correct === true || m.isPowerUp)
+  );
+}
+
+function isBoardSolved(match) {
+  return match.board.every((v, i) => v != null && v === match.solution[i]);
+}
+
+async function fetchMatchPlayers(match) {
+  const [p1, p2] = await Promise.all([
+    User.findById(match.player1).select('name elo'),
+    User.findById(match.player2).select('name elo'),
+  ]);
+  return [p1, p2];
+}
+
+// Full state payload shared by match:start / match:state (rejoin) emits.
+function buildStatePayload(match, players) {
+  return {
+    matchId: match._id,
+    board: match.board,
+    initialBoard: match.initialBoard,
+    cellStatus: buildCellStatus(match),
+    difficulty: match.difficulty,
+    clueCount: match.clueCount,
+    players: players.map((p) =>
+      p ? { _id: p._id, name: p.name, elo: p.elo } : null
+    ),
+    turn: match.turn,
+    turnNumber: match.turnNumber,
+    moveHistory: match.moveHistory,
+    scores: match.scores,
+    powerUpsLeft: match.powerUpsLeft,
+    powerUpsMax: match.powerUpsMax,
+    clocks: match.clocks,
+    status: match.status,
+  };
 }
 
 function attachSocket(server) {
@@ -39,10 +103,12 @@ function attachSocket(server) {
     cors: { origin: '*', methods: ['GET', 'POST'] },
   });
 
-  // Helper: send the full current match state to both players in a room.
+  // Broadcast the live match state to both players.
   function emitMatchState(match) {
     io.to(`match:${match._id}`).emit('match:state', {
+      matchId: match._id,
       board: match.board,
+      cellStatus: buildCellStatus(match),
       turn: match.turn,
       turnNumber: match.turnNumber,
       moveHistory: match.moveHistory,
@@ -61,7 +127,7 @@ function attachSocket(server) {
     match.completedAt = new Date();
     match.winner = winnerPlayer === 1 ? match.player1 : match.player2;
 
-    // ELO only counts for completed (non-abandoned) matches.
+    // ELO only counts for completed matches with a winner.
     if (winnerPlayer) {
       const [p1, p2] = await Promise.all([
         User.findById(match.player1),
@@ -101,76 +167,85 @@ function attachSocket(server) {
       eloDelta: match.eloDelta,
     });
 
-    // Mark the room as finished.
     await Room.updateOne({ _id: match.room }, { status: 'started' });
   }
 
   // Create the Match when both players are in a full room, and start it.
-  async function startMatch(room) {
-    const puzzle = generatePuzzle(room.difficulty, room.clueCount);
-    const clockSec = (room.timerMinPerPlayer || 0) * 60;
+  // Serialized per room so concurrent room:join events can't double-start.
+  async function startMatch(roomId) {
+    return enqueueRoomOp(roomId, async () => {
+      const room = await Room.findById(roomId);
+      if (!room || room.status === 'cancelled') return null;
+      if (room.match) return null; // already started
 
-    const match = await Match.create({
-      player1: room.host,
-      player2: room.guest,
-      room: room._id,
-      difficulty: room.difficulty,
-      clueCount: room.clueCount,
-      timerMinPerPlayer: room.timerMinPerPlayer,
-      board: puzzle.puzzle,
-      initialBoard: puzzle.puzzle,
-      solution: puzzle.solution,
-      turn: 1,
-      turnNumber: 1,
-      scores: { p1: 0, p2: 0 },
-      powerUpsLeft: {
-        p1: room.powerUpsPerPlayer,
-        p2: room.powerUpsPerPlayer,
-      },
-      clocks: { p1: clockSec, p2: clockSec },
-      status: 'active',
-      startedAt: new Date(),
+      if (
+        !room.host ||
+        !room.guest ||
+        String(room.host) === String(room.guest)
+      ) {
+        console.error('startMatch: invalid player ids for room', room.code);
+        return null;
+      }
+
+      const puzzle = generatePuzzle(room.difficulty, room.clueCount);
+      const clockSec = (room.timerMinPerPlayer || 0) * 60;
+
+      const match = await Match.create({
+        player1: room.host,
+        player2: room.guest,
+        room: room._id,
+        difficulty: room.difficulty,
+        clueCount: room.clueCount,
+        timerMinPerPlayer: room.timerMinPerPlayer,
+        board: puzzle.puzzle,
+        initialBoard: puzzle.puzzle,
+        solution: puzzle.solution,
+        turn: 1,
+        turnNumber: 1,
+        scores: { p1: 0, p2: 0 },
+        powerUpsLeft: {
+          p1: room.powerUpsPerPlayer,
+          p2: room.powerUpsPerPlayer,
+        },
+        powerUpsMax: room.powerUpsPerPlayer,
+        clocks: { p1: clockSec, p2: clockSec },
+        status: 'active',
+        startedAt: new Date(),
+      });
+
+      room.match = match._id;
+      room.status = 'started';
+      await room.save();
+
+      const players = await fetchMatchPlayers(match);
+
+      // Move both players' sockets into the match room so match:state /
+      // match:end reach them (they keep room:CODE as well).
+      const socketsInRoom = await io.in(`room:${room.code}`).fetchSockets();
+      for (const s of socketsInRoom) {
+        s.join(`match:${match._id}`);
+        s.matchId = match._id;
+      }
+
+      io.to(`match:${match._id}`).emit('match:start', {
+        ...buildStatePayload(match, players),
+        timerMin: match.timerMinPerPlayer,
+      });
+
+      return match;
     });
-
-    room.match = match._id;
-    room.status = 'started';
-    await room.save();
-
-    const players = await Promise.all([
-      User.findById(match.player1).select('name elo'),
-      User.findById(match.player2).select('name elo'),
-    ]);
-
-    // Move both players' sockets from the room room into the match room,
-    // so match:state / match:end reach them.
-    const socketsInRoom = await io.in(`room:${room.code}`).fetchSockets();
-    for (const s of socketsInRoom) {
-      s.join(`match:${match._id}`);
-    }
-
-    io.to(`room:${room.code}`).emit('match:start', {
-      matchId: match._id,
-      board: match.board,
-      initialBoard: match.initialBoard,
-      difficulty: match.difficulty,
-      clueCount: match.clueCount,
-      players,
-      turn: match.turn,
-      timerMin: match.timerMinPerPlayer,
-      powerUps: match.powerUpsLeft,
-      scores: match.scores,
-      clocks: match.clocks,
-    });
-
-    return match;
   }
 
   io.on('connection', (socket) => {
-    // Attach socket to a room; if the room is full, start the match.
+    // Attach socket to a room; if both players are present, start the match.
     socket.on('room:join', async ({ roomCode, userId }) => {
       try {
+        if (!roomCode || !userId) {
+          socket.emit('error', { message: 'Missing room code or user id.' });
+          return;
+        }
         const room = await Room.findOne({ code: roomCode });
-        if (!room || room.status === 'cancelled' || room.status === 'started') {
+        if (!room || room.status === 'cancelled') {
           socket.emit('error', { message: 'Room not available.' });
           return;
         }
@@ -179,17 +254,50 @@ function attachSocket(server) {
           return;
         }
 
+        const isMember =
+          String(room.host) === String(userId) ||
+          (room.guest && String(room.guest) === String(userId));
+        if (!isMember) {
+          socket.emit('error', { message: 'Not a player in this room.' });
+          return;
+        }
+
         socket.join(`room:${roomCode}`);
         socket.join(`user:${userId}`);
-        socket.userId = userId; // for disconnect handling
+        socket.userId = userId;
+        socket.roomCode = roomCode;
 
         const presence = roomPresence.get(roomCode) || new Set();
         presence.add(userId);
         roomPresence.set(roomCode, presence);
 
-        // Host already in the room; guest joins -> full -> start.
-        if (String(room.guest) === String(userId) && room.status === 'full') {
-          await startMatch(room);
+        // Room already has a running match (late joiner / refresh) -> resync.
+        if (room.match && room.status === 'started') {
+          const match = await Match.findById(room.match);
+          if (match && match.status === 'active') {
+            socket.join(`match:${match._id}`);
+            socket.matchId = match._id;
+            if (String(match.player1) === String(userId))
+              match.disconnectedAt.p1 = null;
+            if (String(match.player2) === String(userId))
+              match.disconnectedAt.p2 = null;
+            await match.save();
+            const players = await fetchMatchPlayers(match);
+            socket.emit('match:state', buildStatePayload(match, players));
+            io.to(`match:${match._id}`).emit('opponent:reconnected', {
+              player: String(match.player1) === String(userId) ? 1 : 2,
+            });
+          }
+          return;
+        }
+
+        // Both players present in a full room -> start the match.
+        if (room.status === 'full' && room.guest) {
+          const hostPresent = presence.has(String(room.host));
+          const guestPresent = presence.has(String(room.guest));
+          if (hostPresent && guestPresent) {
+            await startMatch(room._id);
+          }
         }
       } catch (err) {
         console.error('room:join error:', err);
@@ -200,40 +308,40 @@ function attachSocket(server) {
     // Reconnect to an in-progress match and resync full state.
     socket.on('match:rejoin', async ({ matchId, userId }) => {
       try {
+        if (!matchId || !userId) {
+          socket.emit('error', { message: 'Missing match or user id.' });
+          return;
+        }
         const match = await Match.findById(matchId);
         if (!match) {
           socket.emit('error', { message: 'Match not found.' });
           return;
         }
+        const player =
+          String(match.player1) === String(userId)
+            ? 1
+            : String(match.player2) === String(userId)
+            ? 2
+            : 0;
+        if (!player) {
+          socket.emit('error', { message: 'Not a player in this match.' });
+          return;
+        }
+
         socket.join(`match:${matchId}`);
         socket.join(`user:${userId}`);
-        socket.userId = userId; // for disconnect handling
+        socket.userId = userId;
+        socket.matchId = matchId;
 
-        // Clear the disconnect pause for this player.
-        if (String(match.player1) === String(userId)) match.disconnectedAt.p1 = null;
-        if (String(match.player2) === String(userId)) match.disconnectedAt.p2 = null;
-        await match.save();
+        if (match.status === 'active') {
+          if (player === 1) match.disconnectedAt.p1 = null;
+          if (player === 2) match.disconnectedAt.p2 = null;
+          await match.save();
+        }
 
-        const players = await Promise.all([
-          User.findById(match.player1).select('name elo'),
-          User.findById(match.player2).select('name elo'),
-        ]);
-
-        socket.emit('match:state', {
-          matchId: match._id,
-          board: match.board,
-          initialBoard: match.initialBoard,
-          difficulty: match.difficulty,
-          clueCount: match.clueCount,
-          players,
-          turn: match.turn,
-          turnNumber: match.turnNumber,
-          moveHistory: match.moveHistory,
-          scores: match.scores,
-          powerUpsLeft: match.powerUpsLeft,
-          clocks: match.clocks,
-          status: match.status,
-        });
+        const players = await fetchMatchPlayers(match);
+        socket.emit('match:state', buildStatePayload(match, players));
+        io.to(`match:${matchId}`).emit('opponent:reconnected', { player });
       } catch (err) {
         console.error('match:rejoin error:', err);
         socket.emit('error', { message: 'Failed to rejoin match.' });
@@ -241,7 +349,8 @@ function attachSocket(server) {
     });
 
     // Validate + apply a move. Both players act SIMULTANEOUSLY on the shared
-    // grid (no turns) — a cell is locked once filled by either player.
+    // grid — a cell locks once it holds the correct value; wrong values can
+    // be overwritten by either player.
     socket.on('match:move', ({ matchId, userId, cell, value }) => {
       enqueueMatchOp(matchId, async () => {
         try {
@@ -249,12 +358,17 @@ function attachSocket(server) {
           if (!match || match.status !== 'active') return;
           if (cell < 0 || cell > 80 || value < 1 || value > 9) return;
 
-          const player = String(match.player1) === String(userId) ? 1 : 2;
+          const player =
+            String(match.player1) === String(userId)
+              ? 1
+              : String(match.player2) === String(userId)
+              ? 2
+              : 0;
           if (!player) return;
-          if (match.board[cell] != null) return; // cell already claimed
+          if (isLockedCell(match, cell)) return; // given or already solved
 
           const correct = value === match.solution[cell];
-          const { board, delta, completedLines } = applyMove({
+          const { board, delta } = applyMove({
             board: match.board,
             cell,
             value,
@@ -270,11 +384,16 @@ function attachSocket(server) {
             value,
             isNote: false,
             isPowerUp: false,
+            correct,
             timestamp: new Date(),
           });
           match.lastMoveAt = new Date();
           await match.save();
 
+          if (isBoardSolved(match)) {
+            await endMatch(match, player, 'solved');
+            return;
+          }
           emitMatchState(match);
         } catch (err) {
           console.error('match:move error:', err);
@@ -288,8 +407,13 @@ function attachSocket(server) {
       enqueueMatchOp(matchId, async () => {
         try {
           const match = await Match.findById(matchId);
-          if (!match) return;
-          const player = String(match.player1) === String(userId) ? 1 : 2;
+          if (!match || match.status !== 'active') return;
+          const player =
+            String(match.player1) === String(userId)
+              ? 1
+              : String(match.player2) === String(userId)
+              ? 2
+              : 0;
           if (!player) return;
 
           const res = usePowerUp(match, player, cell);
@@ -304,11 +428,16 @@ function attachSocket(server) {
             value: res.value,
             isNote: false,
             isPowerUp: true,
+            correct: true,
             timestamp: new Date(),
           });
           match.lastMoveAt = new Date();
           await match.save();
 
+          if (isBoardSolved(match)) {
+            await endMatch(match, player, 'solved');
+            return;
+          }
           emitMatchState(match);
         } catch (err) {
           console.error('match:powerup error:', err);
@@ -319,8 +448,13 @@ function attachSocket(server) {
     socket.on('match:resign', async ({ matchId, userId }) => {
       try {
         const match = await Match.findById(matchId);
-        if (!match) return;
-        const player = String(match.player1) === String(userId) ? 1 : 2;
+        if (!match || match.status !== 'active') return;
+        const player =
+          String(match.player1) === String(userId)
+            ? 1
+            : String(match.player2) === String(userId)
+            ? 2
+            : 0;
         if (!player) return;
         const winner = player === 1 ? 2 : 1;
         await endMatch(match, winner, 'resign');
@@ -329,25 +463,41 @@ function attachSocket(server) {
       }
     });
 
-    // On disconnect, mark the player disconnected and pause their clock.
+    // On disconnect, update presence; if the player has no sockets left,
+    // mark them disconnected and let the opponent know.
     socket.on('disconnect', async () => {
       try {
-        const rooms = [...socket.rooms].filter((r) => r.startsWith('room:'));
-        for (const roomKey of rooms) {
-          const code = roomKey.slice('room:'.length);
-          const room = await Room.findOne({ code });
-          if (!room || !room.match) continue;
+        const userId = socket.userId;
+        if (!userId) return;
 
-          const match = await Match.findById(room.match);
-          if (!match || match.status !== 'active') continue;
-
-          const player = String(match.player1) === socket.userId ? 1 : 2;
-          if (player) {
-            const key = player === 1 ? 'p1' : 'p2';
-            match.disconnectedAt[key] = new Date();
-            await match.save();
-            io.to(`room:${code}`).emit('opponent:disconnected', { player });
+        // Remove from room presence only when the user's last socket is gone.
+        const userSockets = await io.in(`user:${userId}`).fetchSockets();
+        if (userSockets.length === 0) {
+          for (const [code, set] of roomPresence) {
+            if (set.has(userId)) {
+              set.delete(userId);
+              if (set.size === 0) roomPresence.delete(code);
+            }
           }
+        }
+
+        const matchId = socket.matchId;
+        if (!matchId) return;
+
+        const match = await Match.findById(matchId);
+        if (!match || match.status !== 'active') return;
+
+        const player =
+          String(match.player1) === userId
+            ? 1
+            : String(match.player2) === userId
+            ? 2
+            : 0;
+        if (player) {
+          const key = player === 1 ? 'p1' : 'p2';
+          match.disconnectedAt[key] = new Date();
+          await match.save();
+          io.to(`match:${matchId}`).emit('opponent:disconnected', { player });
         }
       } catch (err) {
         console.error('disconnect error:', err);

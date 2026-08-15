@@ -10,6 +10,9 @@ const ROOM_TTL_MS = 5 * 60 * 1000; // room code active for 5 minutes
 // Body: { difficulty, clueCount, powerUps, timerMin }
 Router.post('/', async (req, res) => {
   try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Not authenticated.' });
+    }
     const { difficulty, clueCount, powerUps, timerMin } = req.body || {};
 
     // Validate the clue count is within a legal band.
@@ -50,7 +53,7 @@ Router.get('/:code', async (req, res) => {
     const room = await Room.findOne({ code: req.params.code }).populate(
       'host',
       'name elo'
-    );
+    ).populate('guest', 'name elo');
     if (!room) {
       return res
         .status(404)
@@ -71,6 +74,9 @@ Router.get('/:code', async (req, res) => {
 // POST /rooms/:code/join — guest joins; sets guest, status -> full.
 Router.post('/:code/join', async (req, res) => {
   try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Not authenticated.' });
+    }
     const room = await Room.findOne({ code: req.params.code });
     if (!room) {
       return res
@@ -89,13 +95,18 @@ Router.post('/:code/join', async (req, res) => {
         .status(400)
         .json({ success: false, message: 'Room expired.' });
     }
-    if (room.guest) {
+    if (room.guest && String(room.guest) !== String(req.user._id)) {
       return res
         .status(400)
         .json({ success: false, message: 'Room is already full.' });
     }
+    if (String(room.host) === String(req.user._id)) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'You cannot join your own room.' });
+    }
 
-    room.guest = req.user?._id;
+    room.guest = req.user._id;
     room.status = 'full';
     await room.save();
 

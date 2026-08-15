@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { useSocket } from "../contexts/SocketContext";
+import { useRoom } from "../contexts/RoomContext";
+import { useMatch } from "../contexts/MatchContext";
 
 function formatClock(sec) {
-  if (sec == null) return "--:--";
+  if (sec == null || sec <= 0) return "--:--";
   const m = String(Math.floor(sec / 60)).padStart(2, "0");
   const s = String(Math.floor(sec % 60)).padStart(2, "0");
   return `${m}:${s}`;
@@ -13,13 +15,19 @@ function formatClock(sec) {
 function MultiplayerGameBoardPage() {
   const { user } = useAuth();
   const location = useLocation();
+  const { getRoom } = useRoom();
+  const { fetchActiveMatch } = useMatch();
   const settings = location.state?.settings || null;
   const matchIdFromState = location.state?.matchId || null;
+  const roomCodeFromState = location.state?.roomCode || null;
   const {
     match,
     connected,
+    socketConnected,
     oppDisconnected,
     result,
+    lastError,
+    joinRoom,
     rejoinMatch,
     sendMove,
     sendPowerUp,
@@ -29,40 +37,118 @@ function MultiplayerGameBoardPage() {
   const [selected, setSelected] = useState(null);
   const [notesMode, setNotesMode] = useState(false);
   const [powerUpArmed, setPowerUpArmed] = useState(false);
+  const [notes, setNotes] = useState(() => Array.from({ length: 81 }, () => []));
+  const [syncError, setSyncError] = useState("");
+  const [noMatch, setNoMatch] = useState(false);
 
-  // Rejoin an in-progress match when entering from the lobby banner.
+  // Join / rejoin / resync when the page mounts.
   useEffect(() => {
-    if (matchIdFromState && user?._id) {
-      rejoinMatch(matchIdFromState, user._id);
+    if (!user?._id) {
+      setSyncError("Sign in to play multiplayer.");
+      return;
     }
-  }, [matchIdFromState, user?._id, rejoinMatch]);
+
+    if (matchIdFromState) {
+      rejoinMatch(matchIdFromState, user._id);
+      return;
+    }
+
+    if (roomCodeFromState) {
+      joinRoom(roomCodeFromState, user._id);
+      // Poll the room until the match starts (guest joins via HTTP first,
+      // host waits on the waiting page, both land here).
+      let cancelled = false;
+      let attempts = 0;
+      const poll = async () => {
+        if (cancelled) return;
+        attempts++;
+        try {
+          const room = await getRoom(roomCodeFromState);
+          if (cancelled) return;
+          if (room?.match) {
+            rejoinMatch(room.match, user._id);
+            return;
+          }
+          if (attempts < 15) setTimeout(poll, 2000);
+          else if (!cancelled) {
+            setSyncError("The match has not started yet. Try again.");
+          }
+        } catch {
+          if (!cancelled && attempts < 15) setTimeout(poll, 2000);
+          else if (!cancelled) setSyncError("Could not reach the room.");
+        }
+      };
+      poll();
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    // Direct URL — look for an active match.
+    let cancelled = false;
+    fetchActiveMatch()
+      .then((m) => {
+        if (cancelled) return;
+        if (m?._id) rejoinMatch(m._id, user._id);
+        else setNoMatch(true);
+      })
+      .catch(() => {
+        if (!cancelled) setNoMatch(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    user?._id,
+    matchIdFromState,
+    roomCodeFromState,
+    rejoinMatch,
+    joinRoom,
+    getRoom,
+    fetchActiveMatch,
+  ]);
 
   // Live clocks: both players' clocks tick simultaneously (race-style, no turns).
-  const [clocks, setClocks] = useState({ p1: 0, p2: 0 });
+  const [clocks, setClocks] = useState({ p1: null, p2: null });
+  const clocksInitRef = useRef(false);
+  const matchIdRef = useRef(null);
+
   useEffect(() => {
-    if (!match || match.status !== "active") return;
+    if (!match?.matchId) return;
+    if (matchIdRef.current !== match.matchId) {
+      matchIdRef.current = match.matchId;
+      clocksInitRef.current = false;
+    }
+    if (!clocksInitRef.current && match?.clocks) {
+      clocksInitRef.current = true;
+      setClocks({
+        p1: match.clocks.p1 > 0 ? match.clocks.p1 : null,
+        p2: match.clocks.p2 > 0 ? match.clocks.p2 : null,
+      });
+    }
+  }, [match?.matchId, match?.clocks]);
+
+  const matchStatus = match?.status;
+  const matchIdNow = match?.matchId;
+  useEffect(() => {
+    if (matchStatus !== "active") return;
     const interval = setInterval(() => {
       setClocks((prev) => ({
-        p1: Math.max(0, (prev.p1 || 0) - 1),
-        p2: Math.max(0, (prev.p2 || 0) - 1),
+        p1: prev.p1 != null ? Math.max(0, prev.p1 - 1) : null,
+        p2: prev.p2 != null ? Math.max(0, prev.p2 - 1) : null,
       }));
     }, 1000);
     return () => clearInterval(interval);
-  }, [match?.status, match]);
-
-  // When the socket's match arrives (onStart), init the clocks.
-  useEffect(() => {
-    if (match?.clocks) {
-      setClocks({ p1: match.clocks.p1 ?? 300, p2: match.clocks.p2 ?? 300 });
-    }
-  }, [match?.clocks]);
+  }, [matchStatus, matchIdNow]);
 
   // Figure out which seat we are (handles host and guest, and rejoins).
   const myIndex =
     match?.players && user?._id
       ? String(match.players[0]?._id) === String(user._id)
         ? 0
-        : 1
+        : String(match.players[1]?._id) === String(user._id)
+        ? 1
+        : 0
       : 0;
   const me = match?.players?.[myIndex]?.name || user?.name || "You";
   const opponentName =
@@ -72,12 +158,26 @@ function MultiplayerGameBoardPage() {
 
   const handleCellClick = (index) => {
     if (!canAct) return;
-    if (match.board[index] !== null) return;
+    const status = match.cellStatus?.[index];
+    if (status === "given" || status === "locked") return;
     setSelected(index);
   };
 
   const handleNumpad = (value) => {
     if (!canAct || selected == null) return;
+    const status = match.cellStatus?.[selected];
+    if (status === "given" || status === "locked") return;
+    if (notesMode && status !== "wrong") {
+      setNotes((cur) => {
+        const next = [...cur];
+        const set = new Set(next[selected]);
+        if (set.has(value)) set.delete(value);
+        else set.add(value);
+        next[selected] = [...set].sort();
+        return next;
+      });
+      return;
+    }
     if (powerUpArmed) {
       sendPowerUp(selected);
       setPowerUpArmed(false);
@@ -88,11 +188,22 @@ function MultiplayerGameBoardPage() {
     }
   };
 
+  const handleErase = () => {
+    if (!canAct || selected == null) return;
+    setNotes((cur) => {
+      const next = [...cur];
+      next[selected] = [];
+      return next;
+    });
+    setSelected(null);
+  };
+
   const handleResign = () => {
     resign();
   };
 
   const grid = match?.board || [];
+  const cellStatus = match?.cellStatus || [];
 
   return (
     <>
@@ -238,9 +349,28 @@ function MultiplayerGameBoardPage() {
         </div>
 
         {/* Connection banners */}
-        {!connected && (
+        {noMatch && (
+          <div className="mb-4 border-2 border-ink-black bg-surface-variant p-3 font-label-mono text-label-mono uppercase tracking-widest text-ink-black">
+            No active match —{" "}
+            <Link to="/multiplayer" className="underline">
+              join or create one
+            </Link>
+            .
+          </div>
+        )}
+        {!socketConnected && !noMatch && (
           <div className="mb-4 border-2 border-ink-black bg-surface-variant p-3 font-label-mono text-label-mono uppercase tracking-widest text-ink-black">
             Disconnected — reconnecting…
+          </div>
+        )}
+        {socketConnected && !match?.board && !noMatch && (
+          <div className="mb-4 border-2 border-ink-black bg-surface-variant p-3 font-label-mono text-label-mono uppercase tracking-widest text-ink-black">
+            Waiting for opponent…
+          </div>
+        )}
+        {(syncError || lastError) && (
+          <div className="mb-4 border-2 border-ink-black bg-surface-variant p-3 font-label-mono text-label-mono uppercase tracking-widest text-error-red">
+            {syncError || lastError}
           </div>
         )}
         {oppDisconnected && match?.status === "active" && (
@@ -250,7 +380,8 @@ function MultiplayerGameBoardPage() {
         )}
         {result && (
           <div className="mb-4 border-2 border-ink-black bg-ink-black text-paper-white p-4 font-label-mono text-label-mono uppercase tracking-widest">
-            {result.winner === "me" ? "You win" : "You lose"} — {result.reason}
+            {result.winner === myIndex + 1 ? "You win" : "You lose"} —{" "}
+            {result.reason}
             {result.eloDelta ? ` · Elo ±${result.eloDelta}` : ""}
             <Link
               to="/multiplayer"
@@ -267,17 +398,25 @@ function MultiplayerGameBoardPage() {
           <div className="mp-sudoku-grid mx-auto lg:mx-0">
             {Array.from({ length: 81 }, (_, index) => {
               const value = grid[index];
-              const isInitial = match?.initialBoard?.[index] != null;
+              const status = cellStatus[index];
+              const notesSet = notes[index] || [];
               const isSelected = selected === index;
+              const cls = `mp-sudoku-cell ${status || ""} ${
+                isSelected ? "selected" : ""
+              }`;
               return (
                 <div
                   key={index}
-                  className={`mp-sudoku-cell ${
-                    isSelected ? "selected" : ""
-                  } ${isInitial ? "" : "user-input"}`}
+                  className={cls}
                   onClick={() => handleCellClick(index)}
                 >
-                  {value ?? ""}
+                  {value != null ? (
+                    value
+                  ) : notesSet.length ? (
+                    <span className="notes-grid">{notesSet.join("")}</span>
+                  ) : (
+                    ""
+                  )}
                 </div>
               );
             })}
@@ -321,19 +460,29 @@ function MultiplayerGameBoardPage() {
                 }`}
                 onClick={() => setPowerUpArmed(!powerUpArmed)}
                 disabled={
+                  !canAct ||
                   !match ||
-                  match.powerUpsLeft?.[myIndex === 0 ? "p1" : "p2"] <= 0
+                  (match.powerUpsLeft?.[myIndex === 0 ? "p1" : "p2"] ?? 0) <=
+                    0
                 }
               >
                 <span className="material-symbols-outlined text-[20px]">lightbulb</span>
                 Power-up
-                {match?.powerUpsMax ? (
+                {match?.powerUpsLeft ? (
                   <span className="text-secondary">
                     (
-                    {match.powerUpsLeft[myIndex === 0 ? "p1" : "p2"]}/
-                    {match.powerUpsMax})
+                    {match.powerUpsLeft[myIndex === 0 ? "p1" : "p2"] ?? 0}/
+                    {match.powerUpsMax ?? 3})
                   </span>
                 ) : null}
+              </button>
+              <button
+                className="flex items-center gap-2 text-ink-black hover:text-ink-blue font-label-mono text-[14px]"
+                onClick={handleErase}
+                disabled={!canAct}
+              >
+                <span className="material-symbols-outlined text-[20px]">backspace</span>
+                Erase
               </button>
               <button
                 className="flex items-center gap-2 text-error-red hover:text-ink-black font-label-mono text-[14px]"
@@ -354,20 +503,27 @@ function MultiplayerGameBoardPage() {
                 <div className="p-2 text-center">{opponentName}</div>
               </div>
               <div className="move-history flex-1 overflow-y-auto p-0 m-0 font-label-mono text-[14px]">
-                {(match?.moveHistory || []).map((entry, i) => (
-                  <div
-                    key={i}
-                    className="grid grid-cols-[30px_1fr_1fr] border-b border-ink-black/20 hover:bg-surface-container-low"
-                  >
-                    <div className="p-2 text-secondary text-right text-[12px]">
-                      {entry.num}.
+                {(match?.moveHistory || []).map((entry, i) => {
+                  const cellLabel = `R${Math.floor(entry.cell / 9) + 1}C${
+                    (entry.cell % 9) + 1
+                  }`;
+                  const text = `${cellLabel} → ${entry.value}${
+                    entry.isPowerUp ? " ⚡" : ""
+                  }${entry.correct === false ? " ✗" : ""}`;
+                  return (
+                    <div
+                      key={i}
+                      className="grid grid-cols-2 border-b border-ink-black/20 hover:bg-surface-container-low"
+                    >
+                      <div className="p-2 border-r border-ink-black/20 text-center">
+                        {entry.player === 1 ? text : ""}
+                      </div>
+                      <div className="p-2 text-center">
+                        {entry.player === 2 ? text : ""}
+                      </div>
                     </div>
-                    <div className="p-2 border-r border-ink-black/20 text-center">
-                      {entry.p1 || ""}
-                    </div>
-                    <div className="p-2 text-center">{entry.p2 || ""}</div>
-                  </div>
-                ))}
+                  );
+                })}
                 {!match?.moveHistory?.length && (
                   <div className="p-4 text-center text-secondary text-[12px]">
                     No moves yet.

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { DIFFICULTY_BANDS } from "../config/difficulty";
 import { usePractice } from "../contexts/PracticeContext";
@@ -13,7 +13,8 @@ function formatTime(sec) {
 function SinglePlayerGameBoardPage() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { resumeGame, makeMove, requestHint, fetchActiveGame } = usePractice();
+  const { resumeGame, makeMove, requestHint, fetchActiveGame, undoGame } =
+    usePractice();
   const cfg = location.state || {};
   const [gameId, setGameId] = useState(cfg.gameId || null);
   const [difficulty, setDifficulty] = useState(cfg.difficulty || "Medium");
@@ -37,7 +38,7 @@ function SinglePlayerGameBoardPage() {
   const [elapsed, setElapsed] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const historyRef = useRef([]);
+  const [moveError, setMoveError] = useState("");
 
   // No gameId from route state? Fall back to the user's active game (persistence).
   useEffect(() => {
@@ -132,13 +133,9 @@ function SinglePlayerGameBoardPage() {
 
   const isFixed = (idx) => puzzle[idx] != null;
 
-  const checkCompletion = (solvedFlag) => {
-    if (solvedFlag) setSolved(true);
-  };
-
   const applyValue = async (idx, value) => {
     if (isFixed(idx)) return;
-    const prev = board[idx];
+    setMoveError("");
     try {
       const res = await makeMove(gameId, {
         cell: idx,
@@ -148,19 +145,19 @@ function SinglePlayerGameBoardPage() {
       setBoard(res.board);
       setScore(res.score);
       setMistakes(res.mistakes);
-      setFeedback((fb) => ({
-        ...fb,
-        [idx]: res.correct ? "correct" : "wrong",
-      }));
+      setFeedback((fb) => {
+        const next = { ...fb };
+        if (value == null) delete next[idx];
+        else next[idx] = res.correct ? "correct" : "wrong";
+        return next;
+      });
       if (value != null) {
         setLastDelta({ value: res.delta ?? 0, correct: res.correct });
         setTimeout(() => setLastDelta(null), 1200);
       }
-      historyRef.current.push({ idx, prev });
-      checkCompletion(res.solved);
       if (res.solved) setSolved(true);
     } catch (err) {
-      setError(err.message || "Failed to record move.");
+      setMoveError(err.message || "Failed to record move.");
     }
   };
 
@@ -200,27 +197,35 @@ function SinglePlayerGameBoardPage() {
       setBoard(res.board);
       setFeedback((fb) => ({ ...fb, [selected]: "correct" }));
       setPowerUpsLeft((p) => Math.max(0, p - 1));
-      checkCompletion(res.solved);
       if (res.solved) setSolved(true);
     } catch (err) {
-      setError(err.message || "Failed to use hint.");
+      setMoveError(err.message || "Failed to use hint.");
     }
     setSelected(null);
   };
 
-  const handleUndo = () => {
-    const last = historyRef.current.pop();
-    if (!last) return;
-    setBoard((cur) => {
-      const next = [...cur];
-      next[last.idx] = last.prev;
-      return next;
-    });
-    setFeedback((fb) => {
-      const next = { ...fb };
-      delete next[last.idx];
-      return next;
-    });
+  const handleUndo = async () => {
+    setMoveError("");
+    try {
+      const res = await undoGame(gameId);
+      setBoard(res.board);
+      setScore(res.score);
+      setMistakes(res.mistakes);
+      setPowerUpsLeft(
+        Math.max(0, powerUpsMax - (res.powerUpsUsed ?? 0))
+      );
+      // Rebuild correct/wrong tints from the persisted move history.
+      const fb = {};
+      for (const m of res.moves || []) {
+        if (m.correct != null && !m.isPowerUp) {
+          fb[m.cell] = m.correct ? "correct" : "wrong";
+        }
+        if (m.isPowerUp && m.correct) fb[m.cell] = "correct";
+      }
+      setFeedback(fb);
+    } catch (err) {
+      setMoveError(err.message || "Nothing to undo.");
+    }
   };
 
   const handleErase = () => {
@@ -283,6 +288,12 @@ function SinglePlayerGameBoardPage() {
                 >
                   New Game
                 </button>
+              </div>
+            )}
+
+            {moveError && (
+              <div className="mb-4 border border-error-red bg-error-red/10 px-3 py-2 font-body-md text-body-md text-error-red">
+                {moveError}
               </div>
             )}
 

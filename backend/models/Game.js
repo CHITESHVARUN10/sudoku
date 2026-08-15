@@ -24,9 +24,15 @@ const moveSchema = new Schema(
     },
     value: {
       type: Number,
-      required: true,
       min: 1,
       max: 9,
+      default: null, // null = erase
+    },
+    prevValue: {
+      type: Number,
+      min: 1,
+      max: 9,
+      default: null,
     },
     isNote: {
       type: Boolean,
@@ -35,6 +41,14 @@ const moveSchema = new Schema(
     correct: {
       type: Boolean,
       default: null,
+    },
+    delta: {
+      type: Number,
+      default: 0,
+    },
+    isPowerUp: {
+      type: Boolean,
+      default: false,
     },
     timestamp: {
       type: Date,

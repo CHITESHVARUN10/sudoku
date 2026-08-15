@@ -93,6 +93,23 @@ export function PracticeProvider({ children }) {
     return res;
   }, []);
 
+  const undoGame = useCallback(async (gameId) => {
+    const res = await apiClient.post(`/practice/${gameId}/undo`);
+    setGame((g) =>
+      g
+        ? {
+            ...g,
+            board: res.board,
+            score: res.score,
+            mistakes: res.mistakes,
+            powerUpsUsed: res.powerUpsUsed,
+            moves: res.moves,
+          }
+        : g
+    );
+    return res;
+  }, []);
+
   const clearGame = useCallback(() => setGame(null), []);
 
   return (
@@ -107,6 +124,7 @@ export function PracticeProvider({ children }) {
         resumeGame,
         makeMove,
         requestHint,
+        undoGame,
         clearGame,
       }}
     >

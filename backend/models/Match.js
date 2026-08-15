@@ -36,6 +36,10 @@ const moveSchema = new Schema(
       type: Boolean,
       default: false,
     },
+    correct: {
+      type: Boolean,
+      default: null,
+    },
     timestamp: {
       type: Date,
       default: Date.now,
@@ -126,6 +130,13 @@ const matchSchema = new Schema(
     powerUpsLeft: {
       p1: { type: Number, default: 0, min: 0 },
       p2: { type: Number, default: 0, min: 0 },
+    },
+    // Max power-ups per player (set at room creation, 0-3).
+    powerUpsMax: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 3,
     },
     // Remaining clock seconds per player (set from timerMinPerPlayer at start).
     clocks: {

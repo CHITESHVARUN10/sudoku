@@ -1,16 +1,19 @@
 // Real socket.io-client connection to the backend.
 // API-compatible with mockSocket.js so pages/contexts are agnostic:
-// createMatchSocket({ onStart, onState, onEnd, onOppDisconnect, onOppReconnect })
+// createMatchSocket({ onStart, onState, onEnd, onConnect, onDisconnect, onError, onOppDisconnect, onOppReconnect })
 //   -> { joinRoom, rejoinMatch, sendMove, sendPowerUp, resign, destroy }
 
 import { io } from "socket.io-client";
 
-const SOCKET_URL = "http://localhost:5000";
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || "http://localhost:3000";
 
 export function createMatchSocket({
   onStart,
   onState,
   onEnd,
+  onConnect,
+  onDisconnect,
+  onError,
   onOppDisconnect,
   onOppReconnect,
 }) {
@@ -21,12 +24,15 @@ export function createMatchSocket({
     if (socket) return socket;
     socket = io(SOCKET_URL, {
       autoConnect: true,
-      reconnectionAttempts: 5, // stop retrying after 5 failed attempts
+      reconnectionAttempts: Infinity, // keep retrying; server is stateful
     });
 
+    socket.on("connect", () => onConnect?.());
+    socket.on("disconnect", () => onDisconnect?.());
     socket.on("match:start", (data) => onStart?.(data));
     socket.on("match:state", (data) => onState?.(data));
     socket.on("match:end", (data) => onEnd?.(data));
+    socket.on("error", (data) => onError?.(data?.message || "Server error."));
     socket.on("opponent:disconnected", (data) => onOppDisconnect?.(data));
     socket.on("opponent:reconnected", (data) => onOppReconnect?.(data));
     socket.on("room:expired", (data) => onOppDisconnect?.(data)); // treat as pause signal

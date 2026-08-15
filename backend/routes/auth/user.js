@@ -89,10 +89,18 @@ Router.post('/register', async (req, res) => {
     }
     // NOTE: no manual bcrypt.hash here — the model's pre-save hook hashes it.
     const newUser = await User.create({ name, email, password });
-    return res.status(201).json({
-      success: true,
-      message: 'User registered successfully.',
-      user: { _id: newUser._id, name: newUser.name, email: newUser.email, elo: newUser.elo },
+    // Establish the session immediately so subsequent authed routes work.
+    req.logIn(newUser, (loginErr) => {
+      if (loginErr) {
+        return res
+          .status(500)
+          .json({ success: false, message: 'Registered but login failed.' });
+      }
+      return res.status(201).json({
+        success: true,
+        message: 'User registered successfully.',
+        user: { _id: newUser._id, name: newUser.name, email: newUser.email, elo: newUser.elo },
+      });
     });
   } catch (err) {
     console.error('Error during registration:', err);

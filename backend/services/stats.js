@@ -107,6 +107,11 @@ async function recordGame({ userId, mode, difficulty, opponentId, opponentName, 
 async function recordMatchResult(match, { winnerUserId, loserUserId, winnerElo, loserElo, eloDelta, timeSec, movesCount, difficulty }) {
   const results = [];
 
+  // Credit each player their OWN seat score, not p1's score for both.
+  const winnerIsP1 = String(winnerUserId) === String(match.player1);
+  const winnerScore = winnerIsP1 ? match.scores?.p1 ?? 0 : match.scores?.p2 ?? 0;
+  const loserScore = winnerIsP1 ? match.scores?.p2 ?? 0 : match.scores?.p1 ?? 0;
+
   // Winner
   results.push(
     await recordGame({
@@ -119,7 +124,7 @@ async function recordMatchResult(match, { winnerUserId, loserUserId, winnerElo, 
       timeSec,
       movesCount,
       mistakes: 0,
-      score: match.scores?.p1 || 0,
+      score: winnerScore,
       eloDelta,
       powerUpsUsed: 0,
     })
@@ -137,7 +142,7 @@ async function recordMatchResult(match, { winnerUserId, loserUserId, winnerElo, 
       timeSec,
       movesCount,
       mistakes: 0,
-      score: match.scores?.p2 || 0,
+      score: loserScore,
       eloDelta: -eloDelta,
       powerUpsUsed: 0,
     })

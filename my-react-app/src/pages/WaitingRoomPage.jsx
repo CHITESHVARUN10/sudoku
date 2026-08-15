@@ -16,7 +16,7 @@ function WaitingRoomPage() {
   const { user } = useAuth();
 
   // Room code passed from the setup page via route state (host created the room).
-  const roomCode = location.state?.roomCode || "SD-882-QX";
+  const roomCode = location.state?.roomCode || null;
   const settings = location.state?.settings || null;
 
   const [copied, setCopied] = useState(false);
@@ -25,6 +25,11 @@ function WaitingRoomPage() {
   const [expired, setExpired] = useState(false);
   const [cancelled, setCancelled] = useState(false);
   const [error, setError] = useState("");
+
+  // No code in route state (direct URL) — go back to the setup page.
+  useEffect(() => {
+    if (!roomCode) navigate("/multiplayer", { replace: true });
+  }, [roomCode, navigate]);
 
   // Countdown ticker for room expiry.
   useEffect(() => {

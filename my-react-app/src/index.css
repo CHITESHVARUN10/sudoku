@@ -366,6 +366,31 @@ body {
   color: #2b3a55;
 }
 
+/* Multiplayer cell feedback: blue = correct/locked, red = wrong */
+.mp-sudoku-cell.locked {
+  background-color: rgba(43, 58, 85, 0.18);
+  color: #2b3a55;
+  cursor: default;
+}
+
+.mp-sudoku-cell.given {
+  font-weight: 700;
+  cursor: default;
+}
+
+.mp-sudoku-cell.wrong {
+  background-color: rgba(196, 63, 63, 0.18);
+  color: #c43f3f;
+}
+
+.mp-sudoku-cell.locked.selected {
+  background-color: rgba(43, 58, 85, 0.3);
+}
+
+.mp-sudoku-cell.wrong.selected {
+  background-color: rgba(196, 63, 63, 0.3);
+}
+
 .mp-sudoku-cell.notes {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

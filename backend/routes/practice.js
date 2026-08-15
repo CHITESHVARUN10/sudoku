@@ -62,7 +62,17 @@ Router.post('/:id/move', async (req, res) => {
         .status(400)
         .json({ success: false, message: 'Game is not active.' });
     }
-    if (cell < 0 || cell > 80 || value < 1 || value > 9) {
+    if (cell < 0 || cell > 80) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'Invalid move.' });
+    }
+    if (value == null && game.board[cell] == null) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'Cell is already empty.' });
+    }
+    if (value != null && (value < 1 || value > 9)) {
       return res
         .status(400)
         .json({ success: false, message: 'Invalid move.' });
@@ -72,29 +82,39 @@ Router.post('/:id/move', async (req, res) => {
         .status(400)
         .json({ success: false, message: 'Cell is a given — cannot change.' });
     }
+    if (value != null && game.board[cell] === game.solution[cell]) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'Cell is already correct.' });
+    }
 
-    const correct = value === game.solution[cell];
-    const { board, delta, completedLines } = applyMove({
+    const prevValue = game.board[cell] ?? null;
+    // Erase (value = null): no correctness check, no score/mistake change.
+    const correct = value == null ? null : value === game.solution[cell];
+    const { board, delta } = applyMove({
       board: game.board,
       cell,
       value,
-      correct,
+      correct: value == null ? null : correct,
     });
     game.board = board;
     game.score += delta;
     if (timeElapsedSec != null) game.timeElapsedSec = timeElapsedSec;
-    if (!correct) game.mistakes += 1;
+    if (correct === false) game.mistakes += 1;
 
     game.moves.push({
       cell,
       value,
+      prevValue,
       isNote: false,
       correct,
+      delta,
+      isPowerUp: false,
       timestamp: new Date(),
     });
 
     let solved = false;
-    if (game.board.every((v) => v != null)) {
+    if (game.board.every((v, i) => v != null && v === game.solution[i])) {
       game.status = 'solved';
       game.completedAt = new Date();
       solved = true;
@@ -122,9 +142,9 @@ Router.post('/:id/move', async (req, res) => {
       mistakes: game.mistakes,
       correct,
       delta,
-      completedLines,
       solved,
       status: game.status,
+      moves: game.moves,
     });
   } catch (err) {
     return res
@@ -154,12 +174,18 @@ Router.post('/:id/hint', async (req, res) => {
         .status(400)
         .json({ success: false, message: 'No power-ups left.' });
     }
-    if (cell < 0 || cell > 80 || game.board[cell] != null) {
+    if (cell < 0 || cell > 80 || game.initialBoard[cell] != null) {
       return res
         .status(400)
         .json({ success: false, message: 'Invalid cell for hint.' });
     }
+    if (game.board[cell] === game.solution[cell]) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'Cell is already correct.' });
+    }
 
+    const prevValue = game.board[cell] ?? null;
     const value = game.solution[cell];
     const { board, delta } = applyMove({
       board: game.board,
@@ -173,14 +199,16 @@ Router.post('/:id/hint', async (req, res) => {
     game.moves.push({
       cell,
       value,
+      prevValue,
       isNote: false,
       isPowerUp: true,
       correct: true,
+      delta,
       timestamp: new Date(),
     });
 
     let solved = false;
-    if (game.board.every((v) => v != null)) {
+    if (game.board.every((v, i) => v != null && v === game.solution[i])) {
       game.status = 'solved';
       game.completedAt = new Date();
       solved = true;
@@ -212,6 +240,52 @@ Router.post('/:id/hint', async (req, res) => {
     return res
       .status(500)
       .json({ success: false, message: 'Failed to use hint.' });
+  }
+});
+
+// POST /practice/:id/undo — revert the last move (server-authoritative).
+Router.post('/:id/undo', async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Not authenticated.' });
+    }
+    const game = await Game.findById(req.params.id);
+    if (!game || String(game.user) !== String(req.user._id)) {
+      return res.status(404).json({ success: false, message: 'Game not found.' });
+    }
+    if (game.status !== 'active') {
+      return res
+        .status(400)
+        .json({ success: false, message: 'Game is not active.' });
+    }
+    const last = game.moves[game.moves.length - 1];
+    if (!last) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'No move to undo.' });
+    }
+
+    game.moves.pop();
+    game.board[last.cell] = last.prevValue ?? null;
+    game.score -= last.delta || 0;
+    if (last.isPowerUp) game.powerUpsUsed = Math.max(0, game.powerUpsUsed - 1);
+    if (last.correct === false) game.mistakes = Math.max(0, game.mistakes - 1);
+
+    await game.save();
+
+    return res.json({
+      success: true,
+      board: game.board,
+      score: game.score,
+      mistakes: game.mistakes,
+      moves: game.moves,
+      powerUpsUsed: game.powerUpsUsed,
+      status: game.status,
+    });
+  } catch (err) {
+    return res
+      .status(500)
+      .json({ success: false, message: 'Failed to undo move.' });
   }
 });
 
