@@ -5,8 +5,7 @@ function canUsePowerUp(match, player) {
   const key = player === 1 ? 'p1' : 'p2';
   if (!match || match.status !== 'active') return false;
   if (match.powerUpsLeft?.[key] <= 0) return false;
-  if (match.turn !== player) return false; // only on your own turn
-  return true;
+  return true; // no turn restriction — multiplayer is simultaneous
 }
 
 // Reveal the solution value at `cell`. Returns { ok, value, powerUpsLeft } or

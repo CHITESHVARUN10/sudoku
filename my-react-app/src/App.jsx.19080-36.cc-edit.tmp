@@ -5,8 +5,8 @@ import { RoomProvider } from "./contexts/RoomContext";
 import { HistoryProvider } from "./contexts/HistoryContext";
 import { LeaderboardProvider } from "./contexts/LeaderboardContext";
 import { DailyProvider } from "./contexts/DailyContext";
-import { MatchProvider } from "./contexts/MatchContext";
 import { SocketProvider } from "./contexts/SocketContext";
+import { MatchProvider } from "./contexts/MatchContext";
 import LandingPage from "./pages/LandingPage";
 import SinglePlayerSetupPage from "./pages/SinglePlayerSetupPage";
 import SinglePlayerGameBoardPage from "./pages/SinglePlayerGameBoardPage";
@@ -35,30 +35,28 @@ function App() {
             <HistoryProvider>
               <LeaderboardProvider>
                 <DailyProvider>
-                  <MatchProvider>
-                    <SocketProvider>
-                      <Routes>
-                        <Route path="/" element={<LandingPage />} />
-                        <Route path="/practice" element={<SinglePlayerSetupPage />} />
-                        <Route path="/practice/board" element={<SinglePlayerGameBoardPage />} />
-                        <Route path="/multiplayer" element={<MultiplayerSetupModalPage />} />
-                        <Route path="/multiplayer/board" element={<MultiplayerGameBoardPage />} />
-                        <Route path="/multiplayer/waiting" element={<WaitingRoomPage />} />
-                        <Route path="/login" element={<LoginPage />} />
-                        <Route path="/register" element={<RegisterPage />} />
-                        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-                        <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
-                        <Route path="/settings" element={<AccountSettingsPage />} />
-                        <Route path="/how-to-play" element={<HowToPlayPage />} />
-                        <Route path="/stats" element={<StatisticsPage />} />
-                        <Route path="/leaderboard" element={<LeaderboardPage />} />
-                        <Route path="/archive" element={<DailyArchivePage />} />
-                        <Route path="/results" element={<GameResultsPage />} />
-                        <Route path="/about" element={<AboutCreditsPage />} />
-                        <Route path="*" element={<PageNotFoundPage />} />
-                      </Routes>
-                    </SocketProvider>
-                  </MatchProvider>
+                  <SocketProvider>
+                    <Routes>
+                      <Route path="/" element={<LandingPage />} />
+                      <Route path="/practice" element={<SinglePlayerSetupPage />} />
+                      <Route path="/practice/board" element={<SinglePlayerGameBoardPage />} />
+                      <Route path="/multiplayer" element={<MultiplayerSetupModalPage />} />
+                      <Route path="/multiplayer/board" element={<MultiplayerGameBoardPage />} />
+                      <Route path="/multiplayer/waiting" element={<WaitingRoomPage />} />
+                      <Route path="/login" element={<LoginPage />} />
+                      <Route path="/register" element={<RegisterPage />} />
+                      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                      <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
+                      <Route path="/settings" element={<AccountSettingsPage />} />
+                      <Route path="/how-to-play" element={<HowToPlayPage />} />
+                      <Route path="/stats" element={<StatisticsPage />} />
+                      <Route path="/leaderboard" element={<LeaderboardPage />} />
+                      <Route path="/archive" element={<DailyArchivePage />} />
+                      <Route path="/results" element={<GameResultsPage />} />
+                      <Route path="/about" element={<AboutCreditsPage />} />
+                      <Route path="*" element={<PageNotFoundPage />} />
+                    </Routes>
+                  </SocketProvider>
                 </DailyProvider>
               </LeaderboardProvider>
             </HistoryProvider>

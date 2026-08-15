@@ -1,66 +1,54 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { useHistory } from "../contexts/HistoryContext";
+import Navbar from "../components/Navbar";
 
-const DIFFICULTY_BARS = [
-  { label: "Easy", games: "450 Games", width: "35%" },
-  { label: "Medium", games: "520 Games", width: "42%" },
-  { label: "Hard", games: "210 Games", width: "18%" },
-  { label: "Expert", games: "68 Games", width: "5%" },
-];
+function formatTime(sec) {
+  if (sec == null || isNaN(sec)) return "—";
+  const m = String(Math.floor(sec / 60)).padStart(2, "0");
+  const s = String(Math.floor(sec % 60)).padStart(2, "0");
+  return `${m}:${s}`;
+}
 
-const RECENT_GAMES = [
-  { date: "2024-10-24", mode: "Daily", difficulty: "Medium", opponent: "Solo", result: "Win", time: "03:45" },
-  { date: "2024-10-23", mode: "Multiplayer", difficulty: "Hard", opponent: "LogicMaster99", result: "Loss", time: "08:12" },
-  { date: "2024-10-23", mode: "Archive", difficulty: "Expert", opponent: "Solo", result: "Win", time: "14:30" },
-  { date: "2024-10-22", mode: "Daily", difficulty: "Easy", opponent: "Solo", result: "Win", time: "01:55" },
-];
+function formatDate(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getFullYear()).slice(2)}`;
+}
 
 function StatisticsPage() {
+  const { stats, games, fetchStats, fetchHistory, loading, error } = useHistory();
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    if (loaded) return;
+    let cancelled = false;
+    Promise.all([fetchStats(), fetchHistory(1)])
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setLoaded(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchStats, fetchHistory, loaded]);
+
+  const difficultyBars = stats?.difficultyBreakdown
+    ? ["easy", "medium", "hard", "expert"].map((key) => {
+        const count = stats.difficultyBreakdown[key] || 0;
+        const total = Object.values(stats.difficultyBreakdown || {}).reduce((a, b) => a + (b || 0), 0) || 1;
+        return {
+          label: key[0].toUpperCase() + key.slice(1),
+          games: `${count} Games`,
+          width: `${Math.max(3, Math.round((count / total) * 100))}%`,
+        };
+      })
+    : [];
+
   return (
     <div className="antialiased min-h-screen flex flex-col">
-      {/* TopNavBar */}
-      <nav className="bg-paper-white w-full border-b border-ink-black z-50">
-        <div className="flex justify-between items-center w-full px-margin-lg h-16 max-w-[1440px] mx-auto">
-          <Link
-            to="/"
-            className="font-headline-md text-headline-md font-bold text-ink-black uppercase tracking-tighter cursor-pointer"
-          >
-            SUDOKU
-          </Link>
-          <div className="hidden md:flex items-center gap-8 font-headline-sm text-headline-sm uppercase tracking-wider">
-            <Link
-              to="/archive"
-              className="text-note-gray hover:text-ink-black hover:bg-surface-variant transition-colors duration-150 py-2 px-3"
-            >
-              DAILY
-            </Link>
-            <Link
-              to="/archive"
-              className="text-note-gray hover:text-ink-black hover:bg-surface-variant transition-colors duration-150 py-2 px-3"
-            >
-              ARCHIVE
-            </Link>
-            <span className="text-ink-black border-b-2 border-ink-black pb-1 px-3 opacity-80">
-              STATS
-            </span>
-          </div>
-          <div className="flex items-center gap-6">
-            <Link
-              to="/multiplayer"
-              className="font-label-mono text-label-mono border border-ink-black text-ink-black bg-paper-white hover:bg-ink-black hover:text-paper-white px-4 py-2 uppercase transition-colors duration-150"
-            >
-              PLAY NOW
-            </Link>
-            <div className="flex gap-4">
-              <span className="material-symbols-outlined cursor-pointer hover:text-ink-blue transition-colors duration-150">
-                settings
-              </span>
-              <span className="material-symbols-outlined cursor-pointer hover:text-ink-blue transition-colors duration-150">
-                help
-              </span>
-            </div>
-          </div>
-        </div>
-      </nav>
+      {/* Shared Navbar */}
+      <Navbar />
 
       <div className="flex flex-1 max-w-[1440px] mx-auto w-full">
         {/* Main Content */}
@@ -72,6 +60,17 @@ function StatisticsPage() {
             <hr className="border-t-hairline border-ink-black w-full" />
           </header>
 
+          {loading && !stats && (
+            <div className="font-body-md text-body-md text-secondary py-8">
+              Loading stats…
+            </div>
+          )}
+          {error && (
+            <div className="font-body-md text-body-md text-error-red border border-error-red bg-error-red/10 px-3 py-2" role="alert">
+              {error}
+            </div>
+          )}
+
           {/* Scoreboard */}
           <section className="grid grid-cols-2 md:grid-cols-4 border-b-hairline border-ink-black pb-margin-sm gap-y-8">
             <div className="flex flex-col border-r-hairline border-ink-black px-4 first:pl-0">
@@ -79,7 +78,7 @@ function StatisticsPage() {
                 Games Played
               </span>
               <span className="font-grid-number text-grid-number text-ink-black">
-                1,248
+                {stats?.gamesPlayed ?? 0}
               </span>
             </div>
             <div className="flex flex-col md:border-r-hairline border-ink-black px-4">
@@ -87,7 +86,7 @@ function StatisticsPage() {
                 Win Rate
               </span>
               <span className="font-grid-number text-grid-number text-ink-black">
-                94.2%
+                {stats?.winRate ?? 0}%
               </span>
             </div>
             <div className="flex flex-col border-r-hairline border-ink-black px-4 pl-0 md:pl-4">
@@ -95,7 +94,7 @@ function StatisticsPage() {
                 Avg. Time
               </span>
               <span className="font-grid-number text-grid-number text-ink-black">
-                04:12
+                {formatTime(stats?.avgTimeSec)}
               </span>
             </div>
             <div className="flex flex-col px-4">
@@ -103,7 +102,7 @@ function StatisticsPage() {
                 Current Streak
               </span>
               <span className="font-grid-number text-grid-number text-ink-black">
-                14 Days
+                {stats?.currentStreak ?? 0}
               </span>
             </div>
           </section>
@@ -160,20 +159,26 @@ function StatisticsPage() {
                 Difficulty Breakdown
               </h2>
               <div className="flex flex-col gap-6 mt-4">
-                {DIFFICULTY_BARS.map((bar) => (
-                  <div key={bar.label} className="flex flex-col gap-2">
-                    <div className="flex justify-between font-label-mono text-label-mono text-[14px]">
-                      <span>{bar.label}</span>
-                      <span>{bar.games}</span>
+                {difficultyBars.length ? (
+                  difficultyBars.map((bar) => (
+                    <div key={bar.label} className="flex flex-col gap-2">
+                      <div className="flex justify-between font-label-mono text-label-mono text-[14px]">
+                        <span>{bar.label}</span>
+                        <span>{bar.games}</span>
+                      </div>
+                      <div className="w-full h-4 bg-surface-variant border-hairline border-ink-black relative">
+                        <div
+                          className="absolute top-0 left-0 h-full bg-ink-black"
+                          style={{ width: bar.width }}
+                        ></div>
+                      </div>
                     </div>
-                    <div className="w-full h-4 bg-surface-variant border-hairline border-ink-black relative">
-                      <div
-                        className="absolute top-0 left-0 h-full bg-ink-black"
-                        style={{ width: bar.width }}
-                      ></div>
-                    </div>
+                  ))
+                ) : (
+                  <div className="font-label-mono text-label-mono text-note-gray">
+                    No games yet — play a round to see your breakdown.
                   </div>
-                ))}
+                )}
               </div>
             </div>
           </section>
@@ -196,19 +201,27 @@ function StatisticsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {RECENT_GAMES.map((game) => (
-                    <tr
-                      key={game.date + game.opponent}
-                      className="border-b-hairline border-ink-black hover:bg-surface-variant transition-colors duration-150"
-                    >
-                      <td className="py-4 px-2">{game.date}</td>
-                      <td className="py-4 px-2">{game.mode}</td>
-                      <td className="py-4 px-2">{game.difficulty}</td>
-                      <td className="py-4 px-2">{game.opponent}</td>
-                      <td className="py-4 px-2">{game.result}</td>
-                      <td className="py-4 px-2 text-right">{game.time}</td>
+                  {games.length ? (
+                    games.map((game, i) => (
+                      <tr
+                        key={game._id || i}
+                        className="border-b-hairline border-ink-black hover:bg-surface-variant transition-colors duration-150"
+                      >
+                        <td className="py-4 px-2">{formatDate(game.createdAt)}</td>
+                        <td className="py-4 px-2">{game.mode}</td>
+                        <td className="py-4 px-2">{game.difficulty}</td>
+                        <td className="py-4 px-2">{game.opponentName || "—"}</td>
+                        <td className="py-4 px-2">{game.result}</td>
+                        <td className="py-4 px-2 text-right">{formatTime(game.timeSec)}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={6} className="py-6 px-2 text-secondary">
+                        No games yet.
+                      </td>
                     </tr>
-                  ))}
+                  )}
                 </tbody>
               </table>
             </div>

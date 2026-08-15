@@ -1,6 +1,7 @@
 const express = require('express');
 const Game = require('../models/Game');
 const { generatePuzzle } = require('../services/sudokuGenerator');
+const { applyMove } = require('../services/scoring');
 const { recordGame } = require('../services/stats');
 
 const Router = express.Router();
@@ -73,20 +74,22 @@ Router.post('/:id/move', async (req, res) => {
     }
 
     const correct = value === game.solution[cell];
-    game.board[cell] = value;
+    const { board, delta, completedLines } = applyMove({
+      board: game.board,
+      cell,
+      value,
+      correct,
+    });
+    game.board = board;
+    game.score += delta;
     if (timeElapsedSec != null) game.timeElapsedSec = timeElapsedSec;
-
-    if (correct) {
-      game.score += 10;
-    } else {
-      game.score -= 15;
-      game.mistakes += 1;
-    }
+    if (!correct) game.mistakes += 1;
 
     game.moves.push({
       cell,
       value,
       isNote: false,
+      correct,
       timestamp: new Date(),
     });
 
@@ -117,6 +120,9 @@ Router.post('/:id/move', async (req, res) => {
       board: game.board,
       score: game.score,
       mistakes: game.mistakes,
+      correct,
+      delta,
+      completedLines,
       solved,
       status: game.status,
     });
@@ -155,9 +161,23 @@ Router.post('/:id/hint', async (req, res) => {
     }
 
     const value = game.solution[cell];
-    game.board[cell] = value;
+    const { board, delta } = applyMove({
+      board: game.board,
+      cell,
+      value,
+      correct: true,
+    });
+    game.board = board;
+    game.score += delta;
     game.powerUpsUsed += 1;
-    game.moves.push({ cell, value, isNote: false, isPowerUp: true, timestamp: new Date() });
+    game.moves.push({
+      cell,
+      value,
+      isNote: false,
+      isPowerUp: true,
+      correct: true,
+      timestamp: new Date(),
+    });
 
     let solved = false;
     if (game.board.every((v) => v != null)) {
@@ -184,6 +204,7 @@ Router.post('/:id/hint', async (req, res) => {
       success: true,
       board: game.board,
       value,
+      correct: true,
       powerUpsUsed: game.powerUpsUsed,
       solved,
     });
@@ -191,6 +212,28 @@ Router.post('/:id/hint', async (req, res) => {
     return res
       .status(500)
       .json({ success: false, message: 'Failed to use hint.' });
+  }
+});
+
+// GET /practice/active — the user's most recent in-progress solo game.
+// Powers the "Resume session" banner on the practice setup page.
+Router.get('/active', async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Not authenticated.' });
+    }
+    const game = await Game.findOne({ user: req.user._id, status: 'active' })
+      .sort({ createdAt: -1 })
+      .limit(1);
+    if (!game) {
+      return res.json({ success: true, game: null });
+    }
+    const { solution, ...safe } = game.toObject();
+    return res.json({ success: true, game: safe });
+  } catch (err) {
+    return res
+      .status(500)
+      .json({ success: false, message: 'Failed to fetch active game.' });
   }
 });
 

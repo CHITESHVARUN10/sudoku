@@ -1,16 +1,26 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   DIFFICULTY_BANDS,
   clueColor,
 } from "../config/difficulty";
+import { usePractice } from "../contexts/PracticeContext";
+import Navbar from "../components/Navbar";
 
 function SinglePlayerSetupPage() {
   const navigate = useNavigate();
+  const { startGame, fetchActiveGame, activeGame } = usePractice();
   const [difficulty, setDifficulty] = useState("Medium");
   const [clueCount, setClueCount] = useState(DIFFICULTY_BANDS.Medium.base);
   const [powerUpsEnabled, setPowerUpsEnabled] = useState(true);
   const [powerUps, setPowerUps] = useState(3);
+  const [starting, setStarting] = useState(false);
+  const [error, setError] = useState("");
+
+  // Check for an in-progress session to offer a resume.
+  useEffect(() => {
+    fetchActiveGame().catch(() => {});
+  }, [fetchActiveGame]);
 
   const band = DIFFICULTY_BANDS[difficulty];
 
@@ -25,23 +35,66 @@ function SinglePlayerSetupPage() {
     );
   };
 
-  const beginPractice = () => {
-    navigate("/practice/board", {
-      state: {
+  const beginPractice = async () => {
+    setStarting(true);
+    setError("");
+    try {
+      const game = await startGame({
         difficulty,
         clueCount,
         powerUps: powerUpsEnabled ? powerUps : 0,
+      });
+      navigate("/practice/board", {
+        state: {
+          gameId: game._id,
+          difficulty,
+          clueCount,
+          powerUps: powerUpsEnabled ? powerUps : 0,
+        },
+      });
+    } catch (err) {
+      setError(err.message || "Failed to start practice.");
+    } finally {
+      setStarting(false);
+    }
+  };
+
+  const resumeActive = () => {
+    if (!activeGame) return;
+    navigate("/practice/board", {
+      state: {
+        gameId: activeGame._id,
+        difficulty: activeGame.difficulty,
+        clueCount: activeGame.clueCount,
+        powerUps: activeGame.powerUpsTotal,
       },
     });
   };
 
   return (
-    <body className="min-h-screen flex flex-col font-body-md text-body-md text-ink-black antialiased selection:bg-ink-blue selection:text-paper-white relative">
+    <div className="min-h-screen flex flex-col font-body-md text-body-md text-ink-black antialiased selection:bg-ink-blue selection:text-paper-white relative">
+      {/* Shared Navbar */}
+      <Navbar />
       {/* Grid Background Decoration */}
       <div className="absolute inset-0 grid-bg opacity-30 pointer-events-none z-[-1]"></div>
       <main className="flex-grow flex items-center justify-center p-margin-md">
         {/* Setup Panel */}
         <div className="bg-paper-white border border-ink-black shadow-hard max-w-md w-full p-margin-lg">
+          {/* Resume Banner */}
+          {activeGame && (
+            <div className="mb-margin-md border-2 border-ink-black bg-surface-variant p-3 flex items-center justify-between gap-3">
+              <div className="font-body-md text-body-md text-ink-black">
+                In-progress {activeGame.difficulty} session — score{" "}
+                <b>{activeGame.score}</b>
+              </div>
+              <button
+                onClick={resumeActive}
+                className="bg-ink-black text-paper-white px-3 py-2 font-label-mono text-label-mono uppercase tracking-wider hover:bg-ink-blue transition-colors"
+              >
+                Resume
+              </button>
+            </div>
+          )}
           <header className="mb-margin-md text-center">
             <h1 className="font-display-lg text-display-lg text-ink-black tracking-tight mb-2">
               Practice Session
@@ -159,12 +212,21 @@ function SinglePlayerSetupPage() {
             </div>
 
             {/* Action */}
+            {error && (
+              <p
+                className="font-body-md text-body-md text-error-red border border-error-red bg-error-red/10 px-3 py-2"
+                role="alert"
+              >
+                {error}
+              </p>
+            )}
             <div className="pt-margin-sm">
               <button
                 onClick={beginPractice}
-                className="w-full border-2 border-ink-black bg-paper-white text-ink-black py-4 font-label-mono text-label-mono uppercase tracking-widest hover:bg-ink-black hover:text-paper-white transition-colors flex items-center justify-center gap-2 group"
+                disabled={starting}
+                className="w-full border-2 border-ink-black bg-paper-white text-ink-black py-4 font-label-mono text-label-mono uppercase tracking-widest hover:bg-ink-black hover:text-paper-white transition-colors flex items-center justify-center gap-2 group disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                BEGIN PRACTICE
+                {starting ? "STARTING…" : "BEGIN PRACTICE"}
                 <span className="material-symbols-outlined text-[20px] group-hover:translate-x-1 transition-transform">
                   arrow_forward
                 </span>
@@ -180,7 +242,7 @@ function SinglePlayerSetupPage() {
           </div>
         </div>
       </main>
-    </body>
+    </div>
   );
 }
 

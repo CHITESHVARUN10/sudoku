@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 
 function Navbar() {
@@ -10,36 +10,43 @@ function Navbar() {
     navigate("/");
   };
 
+  const linkClass = ({ isActive }) =>
+    `font-label-mono text-label-mono pb-1 transition-colors duration-200 ${
+      isActive
+        ? "text-ink-blue border-b-2 border-ink-blue"
+        : "text-secondary hover:text-ink-blue"
+    }`;
+
   return (
     <nav className="w-full bg-background border-b border-ink-black">
       <div className="flex justify-between items-center w-full px-margin-lg py-4 max-w-7xl mx-auto">
-        <Link
+        <NavLink
           to="/"
           className="font-headline-sm text-headline-sm uppercase tracking-wider text-ink-black"
         >
           SUDOKU ARENA
-        </Link>
+        </NavLink>
         <div className="hidden md:flex gap-8 items-center">
-          <Link
-            to="/multiplayer"
-            className="font-label-mono text-label-mono text-ink-blue border-b-2 border-ink-blue pb-1 transition-colors duration-200"
-          >
+          <NavLink to="/multiplayer" className={linkClass}>
             Play
-          </Link>
-          <Link
-            to="/how-to-play"
-            className="font-label-mono text-label-mono text-secondary hover:text-ink-blue transition-colors duration-200 pb-1"
-          >
+          </NavLink>
+          <NavLink to="/practice" className={linkClass}>
+            Practice
+          </NavLink>
+          <NavLink to="/archive" className={linkClass}>
+            History
+          </NavLink>
+          <NavLink to="/stats" className={linkClass}>
+            Stats
+          </NavLink>
+          <NavLink to="/how-to-play" className={linkClass}>
             Learn
-          </Link>
+          </NavLink>
           {user ? (
             <>
-              <Link
-                to="/settings"
-                className="font-label-mono text-label-mono text-secondary hover:text-ink-blue transition-colors duration-200 pb-1"
-              >
+              <NavLink to="/settings" className={linkClass}>
                 Profile
-              </Link>
+              </NavLink>
               <button
                 onClick={handleLogout}
                 className="font-label-mono text-label-mono text-secondary hover:text-ink-blue transition-colors duration-200 pb-1 cursor-pointer"
@@ -49,18 +56,12 @@ function Navbar() {
             </>
           ) : (
             <>
-              <Link
-                to="/login"
-                className="font-label-mono text-label-mono text-secondary hover:text-ink-blue transition-colors duration-200 pb-1"
-              >
+              <NavLink to="/login" className={linkClass}>
                 Login
-              </Link>
-              <Link
-                to="/register"
-                className="font-label-mono text-label-mono text-ink-blue border-b-2 border-ink-blue pb-1 transition-colors duration-200"
-              >
+              </NavLink>
+              <NavLink to="/register" className={linkClass}>
                 Register
-              </Link>
+              </NavLink>
             </>
           )}
         </div>

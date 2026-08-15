@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { apiClient } from "../api/client";
+import { useAuth } from "../auth/AuthContext";
 
 function ResetPasswordPage() {
   const { token } = useParams();
   const navigate = useNavigate();
+  const { resetPassword } = useAuth();
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -25,7 +26,7 @@ function ResetPasswordPage() {
     }
     setSubmitting(true);
     try {
-      await apiClient.post("/auth/user/reset-password", { token, password });
+      await resetPassword(token, password);
       setDone(true);
       setTimeout(() => navigate("/login"), 1500);
     } catch (err) {

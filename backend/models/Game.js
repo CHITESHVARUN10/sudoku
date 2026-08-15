@@ -32,6 +32,10 @@ const moveSchema = new Schema(
       type: Boolean,
       default: false,
     },
+    correct: {
+      type: Boolean,
+      default: null,
+    },
     timestamp: {
       type: Date,
       default: Date.now,

@@ -1,15 +1,33 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
-import { apiClient } from "../api/client";
+import { useRoom } from "../contexts/RoomContext";
+import { useSocket } from "../contexts/SocketContext";
+import { useMatch } from "../contexts/MatchContext";
+import { useHistory } from "../contexts/HistoryContext";
+import Navbar from "../components/Navbar";
 import {
   DIFFICULTY_BANDS,
   clueColor,
   TIMER_OPTIONS,
 } from "../config/difficulty";
 
+function formatDate(iso) {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 function MultiplayerSetupModalPage() {
   const { user } = useAuth();
+  const { createRoom, joinRoom } = useRoom();
+  const { joinRoom: joinSocketRoom } = useSocket();
+  const { activeMatch, fetchActiveMatch } = useMatch();
+  const { games, fetchHistory } = useHistory();
   const navigate = useNavigate();
   const [difficulty, setDifficulty] = useState("Medium");
   const [clueCount, setClueCount] = useState(DIFFICULTY_BANDS.Medium.base);
@@ -17,10 +35,22 @@ function MultiplayerSetupModalPage() {
   const [powerUps, setPowerUps] = useState(3); // 1-3 max per player
   const [timerMin, setTimerMin] = useState(0); // 0 = off
   const [creating, setCreating] = useState(false);
+  const [joining, setJoining] = useState(false);
+  const [joinCode, setJoinCode] = useState("");
   const [error, setError] = useState("");
 
   const band = DIFFICULTY_BANDS[difficulty];
   const playerName = user?.name || "Guest";
+
+  // Load resume + history info on mount.
+  useEffect(() => {
+    fetchActiveMatch().catch(() => {});
+    fetchHistory(1).catch(() => {});
+  }, [fetchActiveMatch, fetchHistory]);
+
+  const pastMatches = (games || [])
+    .filter((g) => g.mode === "Multiplayer")
+    .slice(0, 5);
 
   const selectDifficulty = (level) => {
     setDifficulty(level);
@@ -38,14 +68,14 @@ function MultiplayerSetupModalPage() {
     setError("");
     setCreating(true);
     try {
-      const res = await apiClient.post("/rooms", {
+      const room = await createRoom({
         difficulty,
         clueCount,
         powerUps: powerUpsEnabled ? powerUps : 0,
         timerMin,
       });
       navigate("/multiplayer/waiting", {
-        state: { roomCode: res.code, settings: res.room },
+        state: { roomCode: room.code, settings: room },
       });
     } catch (err) {
       setError(err.message || "Failed to create room. Please try again.");
@@ -54,64 +84,81 @@ function MultiplayerSetupModalPage() {
     }
   };
 
+  const handleJoin = async () => {
+    if (!joinCode.trim()) {
+      setError("Enter a room code to join.");
+      return;
+    }
+    setError("");
+    setJoining(true);
+    try {
+      const room = await joinRoom(joinCode.trim().toUpperCase());
+      // Guest joins the socket room -> backend sees status full -> match starts.
+      if (user?._id) joinSocketRoom(room.code, user._id);
+      navigate("/multiplayer/board", {
+        state: { roomCode: room.code, settings: room },
+      });
+    } catch (err) {
+      setError(err.message || "Failed to join room.");
+    } finally {
+      setJoining(false);
+    }
+  };
+
+  const resumeMatch = () => {
+    if (!activeMatch?._id) return;
+    navigate("/multiplayer/board", {
+      state: { matchId: activeMatch._id },
+    });
+  };
+
   return (
-    <div className="h-full bg-paper-white bg-grid-pattern font-body-md text-body-md text-ink-black flex flex-col items-center justify-center min-h-screen relative overflow-hidden">
-      {/* Top Navigation (Context) */}
-      <nav className="absolute top-0 w-full border-b border-ink-black bg-paper-white z-10 flex justify-between items-center px-margin-lg h-16 max-w-[1440px] mx-auto border-b-hairline border-surface-variant">
-        <div className="font-headline-md text-headline-md font-bold text-ink-black uppercase tracking-tighter">
-          SUDOKU
-        </div>
-        <div className="hidden md:flex space-x-margin-md font-headline-sm text-headline-sm uppercase tracking-wider">
-          <Link
-            to="/archive"
-            className="text-note-gray hover:text-ink-black transition-colors duration-150"
-          >
-            DAILY
-          </Link>
-          <Link
-            to="/archive"
-            className="text-note-gray hover:text-ink-black transition-colors duration-150"
-          >
-            ARCHIVE
-          </Link>
-          <Link
-            to="/stats"
-            className="text-note-gray hover:text-ink-black transition-colors duration-150"
-          >
-            STATS
-          </Link>
-        </div>
-        <div className="flex items-center space-x-margin-sm">
-          <Link
-            to="/multiplayer/board"
-            className="font-headline-sm text-headline-sm uppercase tracking-wider hover:bg-surface-variant transition-colors duration-150 px-2 py-1 border border-ink-black"
-          >
-            PLAY NOW
-          </Link>
-        </div>
-      </nav>
+    <div className="min-h-screen flex flex-col bg-paper-white text-ink-black font-body-md text-body-md antialiased">
+      {/* Shared Navbar */}
+      <Navbar />
 
-      {/* Overlay Background */}
-      <div className="absolute inset-0 bg-ink-black/20 backdrop-blur-[2px] z-20 flex items-center justify-center p-4">
-        {/* Modal Panel */}
-        <div className="bg-paper-white border-[2px] border-ink-black w-full max-w-lg hard-shadow relative animate-[slideIn_0.3s_ease-out] max-h-[90vh] overflow-y-auto">
-          {/* Modal Header */}
-          <div className="border-b-[2px] border-ink-black p-margin-sm flex justify-between items-center bg-surface-variant">
-            <h2 className="font-headline-md text-headline-md uppercase tracking-tight">
-              Multiplayer Setup
-            </h2>
-            <Link
-              to="/"
-              className="text-ink-black hover:text-error-red transition-colors flex items-center justify-center w-8 h-8 border border-ink-black bg-paper-white hover:bg-surface-variant"
+      {/* Page Content */}
+      <main className="flex-grow w-full max-w-6xl mx-auto px-margin-md md:px-margin-lg py-margin-lg">
+        <header className="mb-margin-lg">
+          <h1 className="font-headline-md text-headline-md uppercase tracking-tight">
+            Multiplayer
+          </h1>
+          <p className="font-body-md text-body-md text-secondary mt-2">
+            Simultaneous battle on one shared grid — fastest, most accurate
+            solver wins.
+          </p>
+        </header>
+
+        {/* Active match resume banner */}
+        {activeMatch && (
+          <div className="mb-margin-md border-2 border-ink-black bg-surface-variant p-4 flex items-center justify-between gap-4 flex-wrap">
+            <div className="font-body-md text-body-md">
+              Active match — {activeMatch.difficulty} ·{" "}
+              {activeMatch.clueCount} clues · your score{" "}
+              <b>
+                {String(activeMatch.player1) === String(user?._id)
+                  ? activeMatch.scores?.p1 ?? 0
+                  : activeMatch.scores?.p2 ?? 0}
+              </b>
+            </div>
+            <button
+              onClick={resumeMatch}
+              className="bg-ink-black text-paper-white px-4 py-2 font-label-mono text-label-mono uppercase tracking-wider hover:bg-ink-blue transition-colors"
             >
-              <span className="material-symbols-outlined">close</span>
-            </Link>
+              Rejoin Match
+            </button>
           </div>
+        )}
 
-          {/* Modal Body */}
-          <div className="p-margin-md space-y-margin-lg">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-margin-lg">
+          {/* Left: Create Match */}
+          <section className="border-2 border-ink-black p-margin-md">
+            <h2 className="font-headline-sm text-headline-sm uppercase tracking-widest border-b border-ink-black pb-2 mb-margin-md">
+              Create Match
+            </h2>
+
             {/* Player Inputs */}
-            <div className="space-y-margin-sm">
+            <div className="space-y-margin-sm mb-margin-md">
               <div className="group">
                 <label
                   className="block font-label-mono text-grid-notes text-note-gray uppercase tracking-widest mb-1 group-focus-within:text-ink-blue transition-colors"
@@ -147,7 +194,7 @@ function MultiplayerSetupModalPage() {
             </div>
 
             {/* Difficulty Selector */}
-            <div>
+            <div className="mb-margin-md">
               <label className="block font-label-mono text-grid-notes text-ink-black uppercase tracking-widest mb-3 border-b border-ink-black pb-1">
                 Difficulty Protocol
               </label>
@@ -212,7 +259,7 @@ function MultiplayerSetupModalPage() {
             </div>
 
             {/* Power-ups */}
-            <div>
+            <div className="mb-margin-md">
               <label className="block font-label-mono text-grid-notes text-ink-black uppercase tracking-widest mb-3 border-b border-ink-black pb-1">
                 Power-ups
               </label>
@@ -271,7 +318,7 @@ function MultiplayerSetupModalPage() {
             </div>
 
             {/* Timer (chess clock) */}
-            <div>
+            <div className="mb-margin-md">
               <label className="block font-label-mono text-grid-notes text-ink-black uppercase tracking-widest mb-3 border-b border-ink-black pb-1">
                 Timer (Chess Clock)
               </label>
@@ -299,16 +346,13 @@ function MultiplayerSetupModalPage() {
 
             {error && (
               <p
-                className="font-body-md text-body-md text-error-red border border-error-red bg-error-red/10 px-3 py-2"
+                className="font-body-md text-body-md text-error-red border border-error-red bg-error-red/10 px-3 py-2 mb-margin-md"
                 role="alert"
               >
                 {error}
               </p>
             )}
-          </div>
 
-          {/* Modal Footer */}
-          <div className="p-margin-md border-t-[2px] border-ink-black bg-surface-container">
             <button
               onClick={handleInitialize}
               disabled={creating}
@@ -319,21 +363,81 @@ function MultiplayerSetupModalPage() {
                 arrow_forward
               </span>
             </button>
-          </div>
-        </div>
-      </div>
+          </section>
 
-      {/* Decorative Sidebar (Context) */}
-      <div className="absolute left-0 top-16 h-[calc(100vh-64px)] w-64 border-r border-ink-black bg-surface-container hidden lg:flex flex-col py-8 border-r-hairline border-surface-variant">
-        <div className="px-4 py-2 bg-ink-black text-paper-white font-bold mb-2">
-          <span className="material-symbols-outlined mr-2 align-middle">groups</span>
-          Multiplayer
+          {/* Right: Join + Past matches */}
+          <section className="flex flex-col gap-margin-lg">
+            {/* Join with code */}
+            <div className="border-2 border-ink-black p-margin-md">
+              <h2 className="font-headline-sm text-headline-sm uppercase tracking-widest border-b border-ink-black pb-2 mb-margin-md">
+                Join Match
+              </h2>
+              <label className="block font-label-mono text-grid-notes text-note-gray uppercase tracking-widest mb-1">
+                Have a code? Join a room
+              </label>
+              <div className="flex gap-2">
+                <input
+                  className="flex-1 bg-transparent border-0 border-b-[2px] border-ink-black p-0 py-1 font-headline-sm text-headline-sm focus:ring-0 focus:border-ink-blue focus:outline-none transition-colors placeholder:text-note-gray uppercase"
+                  placeholder="SD-000-00"
+                  value={joinCode}
+                  onChange={(e) => setJoinCode(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleJoin()}
+                />
+                <button
+                  onClick={handleJoin}
+                  disabled={joining}
+                  className="bg-ink-black text-paper-white px-4 py-1 font-label-mono text-label-mono uppercase tracking-wider hover:bg-ink-blue transition-colors disabled:opacity-50"
+                >
+                  {joining ? "Joining…" : "Join"}
+                </button>
+              </div>
+            </div>
+
+            {/* Past matches */}
+            <div className="border-2 border-ink-black p-margin-md">
+              <h2 className="font-headline-sm text-headline-sm uppercase tracking-widest border-b border-ink-black pb-2 mb-margin-md">
+                Recent Matches
+              </h2>
+              {pastMatches.length ? (
+                <ul className="divide-y divide-ink-black/20">
+                  {pastMatches.map((g, i) => (
+                    <li
+                      key={g._id || i}
+                      className="py-2 flex items-center justify-between gap-4"
+                    >
+                      <div className="flex flex-col">
+                        <span className="font-body-md text-body-md">
+                          {g.result === "Win" ? "Won" : "Lost"} · {g.difficulty}
+                        </span>
+                        <span className="font-grid-notes text-grid-notes text-secondary">
+                          {formatDate(g.createdAt)} · {g.movesCount} moves
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <span
+                          className={`font-headline-sm text-headline-sm ${
+                            g.eloDelta > 0 ? "text-ink-blue" : "text-error-red"
+                          }`}
+                        >
+                          {g.eloDelta > 0 ? `+${g.eloDelta}` : g.eloDelta} ELO
+                        </span>
+                        <div className="font-grid-notes text-grid-notes text-secondary">
+                          Score {g.score}
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="font-body-md text-body-md text-secondary">
+                  No multiplayer matches yet — create one and your results will
+                  appear here.
+                </p>
+              )}
+            </div>
+          </section>
         </div>
-        <div className="px-4 py-2 text-ink-black hover:underline cursor-pointer opacity-50 pointer-events-none">
-          <span className="material-symbols-outlined mr-2 align-middle">grid_view</span>
-          New Game
-        </div>
-      </div>
+      </main>
     </div>
   );
 }

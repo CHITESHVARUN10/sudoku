@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { apiClient } from "../api/client";
+import { useAuth } from "../auth/AuthContext";
 
 function ForgotPasswordPage() {
+  const { forgotPassword } = useAuth();
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -13,7 +14,7 @@ function ForgotPasswordPage() {
     setError("");
     setSubmitting(true);
     try {
-      await apiClient.post("/auth/user/forgot-password", { email });
+      await forgotPassword(email);
       setSent(true);
     } catch (err) {
       setError(err.message || "Something went wrong. Please try again.");

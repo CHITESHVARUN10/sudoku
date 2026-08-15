@@ -1,7 +1,7 @@
 // Thin API client for the backend. When MOCK is true, all calls resolve with
 // fake data so the frontend works standalone (no backend running). Flip MOCK
 // to false when the backend routes are ready and you want real requests.
-const MOCK = true;
+const MOCK = false;
 
 const BASE_URL = "http://localhost:5000";
 

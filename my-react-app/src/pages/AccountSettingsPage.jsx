@@ -1,51 +1,21 @@
 import { Link } from "react-router-dom";
+import { useAuth } from "../auth/AuthContext";
+import Navbar from "../components/Navbar";
 
 function AccountSettingsPage() {
+  const { user } = useAuth();
+  const initials = (user?.name || "?")
+    .split(" ")
+    .map((p) => p[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase() || "?";
+
   return (
     <div className="bg-paper-white text-ink-black font-body-md min-h-screen flex flex-col">
-      {/* TopNavBar */}
-      <nav className="bg-paper-white w-full border-b border-ink-black flex justify-between items-center px-margin-lg py-4 w-full max-w-full z-50">
-        <Link
-          to="/"
-          className="font-headline-md text-headline-md font-bold text-ink-black uppercase tracking-tighter"
-        >
-          SUDOKU ARENA
-        </Link>
-        <div className="hidden md:flex gap-8 font-headline-sm text-headline-sm uppercase tracking-widest">
-          <Link
-            to="/multiplayer"
-            className="text-secondary hover:bg-ink-black hover:text-paper-white transition-colors duration-150 cursor-pointer"
-          >
-            Play
-          </Link>
-          <Link
-            to="/how-to-play"
-            className="text-secondary hover:bg-ink-black hover:text-paper-white transition-colors duration-150 cursor-pointer"
-          >
-            Learn
-          </Link>
-          <Link
-            to="/practice"
-            className="text-secondary hover:bg-ink-black hover:text-paper-white transition-colors duration-150 cursor-pointer"
-          >
-            Practice
-          </Link>
-          <Link
-            to="/archive"
-            className="text-secondary hover:bg-ink-black hover:text-paper-white transition-colors duration-150 cursor-pointer"
-          >
-            History
-          </Link>
-        </div>
-        <div className="flex gap-4">
-          <span className="material-symbols-outlined cursor-pointer hover:text-ink-black transition-colors duration-150">
-            account_circle
-          </span>
-          <span className="material-symbols-outlined cursor-pointer hover:text-ink-black transition-colors duration-150">
-            settings
-          </span>
-        </div>
-      </nav>
+      {/* Shared Navbar */}
+      <Navbar />
 
       {/* Main Content */}
       <main className="flex-grow w-full max-w-[600px] mx-auto px-margin-sm md:px-0 py-margin-lg flex flex-col gap-12">
@@ -59,7 +29,7 @@ function AccountSettingsPage() {
         {/* Identity Section */}
         <section className="flex gap-8 items-start pb-12 border-b border-ink-black">
           <div className="w-24 h-24 bg-ink-black text-paper-white flex items-center justify-center flex-shrink-0">
-            <span className="font-headline-md text-headline-md">JD</span>
+            <span className="font-headline-md text-headline-md">{initials}</span>
           </div>
           <div className="flex flex-col gap-6 w-full pt-1">
             <div>
@@ -69,7 +39,7 @@ function AccountSettingsPage() {
               <input
                 className="input-underline font-body-lg text-body-lg"
                 type="text"
-                defaultValue="John Doe"
+                defaultValue={user?.name || ""}
               />
             </div>
             <div>
@@ -79,7 +49,7 @@ function AccountSettingsPage() {
               <input
                 className="input-underline font-body-lg text-body-lg"
                 type="email"
-                defaultValue="john.doe@example.com"
+                defaultValue={user?.email || ""}
               />
             </div>
           </div>

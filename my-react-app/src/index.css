@@ -279,6 +279,37 @@ body {
   color: #2b3a55;
 }
 
+/* Move feedback tints: blue = correct, red = wrong */
+.sudoku-cell.correct {
+  background-color: rgba(43, 58, 85, 0.18);
+}
+
+.sudoku-cell.correct.selected {
+  background-color: rgba(43, 58, 85, 0.3);
+}
+
+.sudoku-cell.wrong {
+  background-color: rgba(196, 63, 63, 0.18);
+}
+
+.sudoku-cell.wrong.selected {
+  background-color: rgba(196, 63, 63, 0.3);
+}
+
+/* Pencil marks (notes) rendered as a compact 3x3 digit grid */
+.notes-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  width: 100%;
+  height: 100%;
+  font-size: 11px;
+  line-height: 1;
+  color: #7a7875;
+  align-items: center;
+  justify-items: center;
+}
+
 /* Multiplayer sudoku grid */
 .mp-sudoku-grid {
   border: 2px solid #1a1a1a;

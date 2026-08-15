@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
-import { createMockSocket } from "../api/mockSocket";
+import { useSocket } from "../contexts/SocketContext";
 
 function formatClock(sec) {
   if (sec == null) return "--:--";
@@ -14,64 +14,61 @@ function MultiplayerGameBoardPage() {
   const { user } = useAuth();
   const location = useLocation();
   const settings = location.state?.settings || null;
+  const matchIdFromState = location.state?.matchId || null;
+  const {
+    match,
+    connected,
+    oppDisconnected,
+    result,
+    rejoinMatch,
+    sendMove,
+    sendPowerUp,
+    resign,
+  } = useSocket();
 
-  const [match, setMatch] = useState(null);
   const [selected, setSelected] = useState(null);
   const [notesMode, setNotesMode] = useState(false);
-  const [connected, setConnected] = useState(true);
-  const [oppDisconnected, setOppDisconnected] = useState(false);
-  const [result, setResult] = useState(null);
   const [powerUpArmed, setPowerUpArmed] = useState(false);
 
-  const socketRef = useRef(null);
+  // Rejoin an in-progress match when entering from the lobby banner.
+  useEffect(() => {
+    if (matchIdFromState && user?._id) {
+      rejoinMatch(matchIdFromState, user._id);
+    }
+  }, [matchIdFromState, user?._id, rejoinMatch]);
 
-  // Live clocks: tick every second, decrement the active player's clock.
+  // Live clocks: both players' clocks tick simultaneously (race-style, no turns).
   const [clocks, setClocks] = useState({ p1: 0, p2: 0 });
   useEffect(() => {
     if (!match || match.status !== "active") return;
     const interval = setInterval(() => {
-      setClocks((prev) => {
-        const active = match.turn === 1 ? "p1" : "p2";
-        const next = { ...prev, [active]: Math.max(0, (prev[active] || 0) - 1) };
-        return next;
-      });
+      setClocks((prev) => ({
+        p1: Math.max(0, (prev.p1 || 0) - 1),
+        p2: Math.max(0, (prev.p2 || 0) - 1),
+      }));
     }, 1000);
     return () => clearInterval(interval);
-  }, [match?.turn, match?.status, match]);
+  }, [match?.status, match]);
 
-  // Set up the socket connection (mock for now).
+  // When the socket's match arrives (onStart), init the clocks.
   useEffect(() => {
-    const socket = createMockSocket({
-      onStart: (data) => {
-        setMatch(data);
-        setClocks({ p1: data.clocks?.p1 ?? 300, p2: data.clocks?.p2 ?? 300 });
-        setConnected(true);
-        setResult(null);
-        setPowerUpArmed(false);
-      },
-      onState: (data) => {
-        setMatch(data);
-        setClocks((prev) => ({
-          p1: data.clocks?.p1 ?? prev.p1,
-          p2: data.clocks?.p2 ?? prev.p2,
-        }));
-      },
-      onEnd: (data) => {
-        setMatch((m) => (m ? { ...m, status: "completed" } : m));
-        setResult(data);
-      },
-      onOppDisconnect: () => setOppDisconnected(true),
-      onOppReconnect: () => setOppDisconnected(false),
-    });
-    socketRef.current = socket;
-    return () => socket.destroy();
-  }, []);
+    if (match?.clocks) {
+      setClocks({ p1: match.clocks.p1 ?? 300, p2: match.clocks.p2 ?? 300 });
+    }
+  }, [match?.clocks]);
 
-  const myPlayerNumber = 1; // host is player 1
-  const me = user?.name || "John Doe";
-  const opponentName = match?.players?.[1]?.name || "Opponent";
-  const myTurn = match ? match.turn === myPlayerNumber : true;
-  const canAct = connected && match?.status === "active" && myTurn;
+  // Figure out which seat we are (handles host and guest, and rejoins).
+  const myIndex =
+    match?.players && user?._id
+      ? String(match.players[0]?._id) === String(user._id)
+        ? 0
+        : 1
+      : 0;
+  const me = match?.players?.[myIndex]?.name || user?.name || "You";
+  const opponentName =
+    match?.players?.[1 - myIndex]?.name || "Opponent";
+  // Simultaneous play: both players can act at any time while the match is active.
+  const canAct = connected && match?.status === "active";
 
   const handleCellClick = (index) => {
     if (!canAct) return;
@@ -81,19 +78,18 @@ function MultiplayerGameBoardPage() {
 
   const handleNumpad = (value) => {
     if (!canAct || selected == null) return;
-    const socket = socketRef.current;
     if (powerUpArmed) {
-      socket.sendPowerUp(selected);
+      sendPowerUp(selected);
       setPowerUpArmed(false);
       setSelected(null);
     } else {
-      socket.sendMove(selected, value);
+      sendMove(selected, value);
       setSelected(null);
     }
   };
 
   const handleResign = () => {
-    socketRef.current?.resign();
+    resign();
   };
 
   const grid = match?.board || [];
@@ -197,17 +193,11 @@ function MultiplayerGameBoardPage() {
         {/* Match Header */}
         <div className="w-full border-b border-ink-black pb-4 mb-8 flex justify-between items-end">
           <div className="flex items-center gap-3">
-            <span
-              className={`font-headline-sm text-headline-sm font-bold px-3 py-1 border-2 transition-colors ${
-                myTurn && match?.status === "active"
-                  ? "bg-ink-black text-paper-white border-ink-black"
-                  : "text-ink-black border-transparent"
-              }`}
-            >
+            <span className="font-headline-sm text-headline-sm font-bold px-3 py-1 border-2 border-ink-black text-ink-black">
               {me}
             </span>
             <span className="font-label-mono text-label-mono text-secondary">
-              {formatClock(clocks.p1)}
+              {formatClock(clocks[myIndex === 0 ? "p1" : "p2"])}
             </span>
           </div>
           <div className="flex flex-col items-center justify-center">
@@ -224,28 +214,24 @@ function MultiplayerGameBoardPage() {
             )}
             <div className="h-4 w-px bg-ink-black my-2"></div>
             <span className="font-label-mono text-[14px] uppercase tracking-widest text-ink-blue font-bold">
-              TURN {match?.turnNumber || 1}
+              {match?.moveHistory?.length || 0} MOVES
             </span>
             <div className="flex gap-6 mt-2 font-label-mono text-[14px]">
               <span className="text-ink-black">
-                You: <b>{match?.scores?.p1 ?? 0}</b>
+                You:{" "}
+                <b>{match?.scores?.[myIndex === 0 ? "p1" : "p2"] ?? 0}</b>
               </span>
               <span className="text-secondary">
-                Opp: <b>{match?.scores?.p2 ?? 0}</b>
+                Opp:{" "}
+                <b>{match?.scores?.[myIndex === 0 ? "p2" : "p1"] ?? 0}</b>
               </span>
             </div>
           </div>
           <div className="flex items-center gap-3">
             <span className="font-label-mono text-label-mono text-secondary">
-              {formatClock(clocks.p2)}
+              {formatClock(clocks[myIndex === 0 ? "p2" : "p1"])}
             </span>
-            <span
-              className={`font-headline-sm text-headline-sm font-bold px-3 py-1 border-2 transition-colors ${
-                !myTurn && match?.status === "active"
-                  ? "bg-ink-black text-paper-white border-ink-black"
-                  : "text-ink-black border-transparent"
-              }`}
-            >
+            <span className="font-headline-sm text-headline-sm font-bold px-3 py-1 border-2 border-ink-black text-ink-black">
               {opponentName}
             </span>
           </div>
@@ -334,13 +320,18 @@ function MultiplayerGameBoardPage() {
                     : "text-ink-black hover:text-ink-blue"
                 }`}
                 onClick={() => setPowerUpArmed(!powerUpArmed)}
-                disabled={!match || match.powerUpsLeft?.p1 <= 0}
+                disabled={
+                  !match ||
+                  match.powerUpsLeft?.[myIndex === 0 ? "p1" : "p2"] <= 0
+                }
               >
                 <span className="material-symbols-outlined text-[20px]">lightbulb</span>
                 Power-up
                 {match?.powerUpsMax ? (
                   <span className="text-secondary">
-                    ({match.powerUpsLeft.p1}/{match.powerUpsMax})
+                    (
+                    {match.powerUpsLeft[myIndex === 0 ? "p1" : "p2"]}/
+                    {match.powerUpsMax})
                   </span>
                 ) : null}
               </button>

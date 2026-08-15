@@ -41,7 +41,7 @@ function buildInitialState() {
     difficulty: "Hard",
     clueCount: 29,
     players: PLAYERS,
-    turn: 1, // 1 = me, 2 = opponent
+    turn: null, // no turns — both players act simultaneously
     turnNumber: 1,
     scores: { p1: 0, p2: 0 },
     powerUpsLeft: { p1: 3, p2: 3 },
@@ -80,8 +80,6 @@ export function createMockSocket({ onStart, onState, onEnd, onOppDisconnect, onO
 
     state.board[idx] = SOLUTION[idx];
     oppMoves++;
-    state.turn = 1;
-    state.turnNumber += 1;
     state.scores.p2 += 10;
     state.moveHistory.push({
       num: state.moveHistory.length + 1,
@@ -100,8 +98,7 @@ export function createMockSocket({ onStart, onState, onEnd, onOppDisconnect, onO
 
   return {
     sendMove(cell, value) {
-      if (state.turn !== 1) return;
-      if (state.board[cell] !== null) return;
+      if (state.board[cell] !== null) return; // cell already claimed
 
       const correct = value === SOLUTION[cell];
       state.board[cell] = value;
@@ -117,9 +114,6 @@ export function createMockSocket({ onStart, onState, onEnd, onOppDisconnect, onO
         state.scores.p1 -= 15;
       }
 
-      state.turn = 2;
-      state.turnNumber += 1;
-
       if (state.board.every((v) => v !== null)) {
         state.status = "completed";
         onEnd({ winner: "me", reason: "solved", scores: state.scores, eloDelta: 8 });
@@ -129,7 +123,6 @@ export function createMockSocket({ onStart, onState, onEnd, onOppDisconnect, onO
       onState(state);
     },
     sendPowerUp(cell) {
-      if (state.turn !== 1) return;
       if (state.powerUpsLeft.p1 <= 0) return;
       if (state.board[cell] !== null) return;
 
@@ -140,8 +133,6 @@ export function createMockSocket({ onStart, onState, onEnd, onOppDisconnect, onO
         p1: `R${Math.floor(cell / 9) + 1}C${(cell % 9) + 1} → ${SOLUTION[cell]} ⚡`,
         p2: null,
       });
-      state.turn = 2;
-      state.turnNumber += 1;
 
       if (state.board.every((v) => v !== null)) {
         state.status = "completed";

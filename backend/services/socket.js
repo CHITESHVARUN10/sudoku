@@ -11,6 +11,22 @@ const { recordMatchResult } = require('./stats');
 // Map from room code -> set of connected user IDs (for presence / reconnect).
 const roomPresence = new Map();
 
+// Per-match serialization queues: match:move / match:powerup handlers mutate
+// the same Match doc, so concurrent read-modify-write loses updates. Chain
+// each operation so they run one at a time per match.
+const matchQueues = new Map();
+
+function enqueueMatchOp(matchId, fn) {
+  const prev = matchQueues.get(matchId) || Promise.resolve();
+  const next = prev.then(fn, fn);
+  matchQueues.set(matchId, next);
+  // Clean up the queue entry when it settles.
+  next.finally(() => {
+    if (matchQueues.get(matchId) === next) matchQueues.delete(matchId);
+  });
+  return next;
+}
+
 // Generate a room code like "SD-882-QX".
 function generateRoomCode() {
   const a = Math.floor(100 + Math.random() * 900);
@@ -125,6 +141,13 @@ function attachSocket(server) {
       User.findById(match.player2).select('name elo'),
     ]);
 
+    // Move both players' sockets from the room room into the match room,
+    // so match:state / match:end reach them.
+    const socketsInRoom = await io.in(`room:${room.code}`).fetchSockets();
+    for (const s of socketsInRoom) {
+      s.join(`match:${match._id}`);
+    }
+
     io.to(`room:${room.code}`).emit('match:start', {
       matchId: match._id,
       board: match.board,
@@ -158,6 +181,7 @@ function attachSocket(server) {
 
         socket.join(`room:${roomCode}`);
         socket.join(`user:${userId}`);
+        socket.userId = userId; // for disconnect handling
 
         const presence = roomPresence.get(roomCode) || new Set();
         presence.add(userId);
@@ -183,14 +207,25 @@ function attachSocket(server) {
         }
         socket.join(`match:${matchId}`);
         socket.join(`user:${userId}`);
+        socket.userId = userId; // for disconnect handling
 
         // Clear the disconnect pause for this player.
         if (String(match.player1) === String(userId)) match.disconnectedAt.p1 = null;
         if (String(match.player2) === String(userId)) match.disconnectedAt.p2 = null;
         await match.save();
 
+        const players = await Promise.all([
+          User.findById(match.player1).select('name elo'),
+          User.findById(match.player2).select('name elo'),
+        ]);
+
         socket.emit('match:state', {
+          matchId: match._id,
           board: match.board,
+          initialBoard: match.initialBoard,
+          difficulty: match.difficulty,
+          clueCount: match.clueCount,
+          players,
           turn: match.turn,
           turnNumber: match.turnNumber,
           moveHistory: match.moveHistory,
@@ -205,78 +240,80 @@ function attachSocket(server) {
       }
     });
 
-    // Validate + apply a move, update score, switch turn, emit state.
-    socket.on('match:move', async ({ matchId, userId, cell, value }) => {
-      try {
-        const match = await Match.findById(matchId);
-        if (!match || match.status !== 'active') return;
-        if (cell < 0 || cell > 80 || value < 1 || value > 9) return;
+    // Validate + apply a move. Both players act SIMULTANEOUSLY on the shared
+    // grid (no turns) — a cell is locked once filled by either player.
+    socket.on('match:move', ({ matchId, userId, cell, value }) => {
+      enqueueMatchOp(matchId, async () => {
+        try {
+          const match = await Match.findById(matchId);
+          if (!match || match.status !== 'active') return;
+          if (cell < 0 || cell > 80 || value < 1 || value > 9) return;
 
-        const player = String(match.player1) === String(userId) ? 1 : 2;
-        if (!player || match.turn !== player) return;
-        if (match.board[cell] != null) return;
+          const player = String(match.player1) === String(userId) ? 1 : 2;
+          if (!player) return;
+          if (match.board[cell] != null) return; // cell already claimed
 
-        const correct = value === match.solution[cell];
-        const { board, delta, completedLines } = applyMove({
-          board: match.board,
-          cell,
-          value,
-          correct,
-        });
+          const correct = value === match.solution[cell];
+          const { board, delta, completedLines } = applyMove({
+            board: match.board,
+            cell,
+            value,
+            correct,
+          });
 
-        match.board = board;
-        const scoreKey = player === 1 ? 'p1' : 'p2';
-        match.scores[scoreKey] += delta;
-        match.moveHistory.push({
-          player,
-          cell,
-          value,
-          isNote: false,
-          isPowerUp: false,
-          timestamp: new Date(),
-        });
-        match.turn = player === 1 ? 2 : 1;
-        match.turnNumber += 1;
-        match.lastMoveAt = new Date();
-        await match.save();
+          match.board = board;
+          const scoreKey = player === 1 ? 'p1' : 'p2';
+          match.scores[scoreKey] += delta;
+          match.moveHistory.push({
+            player,
+            cell,
+            value,
+            isNote: false,
+            isPowerUp: false,
+            timestamp: new Date(),
+          });
+          match.lastMoveAt = new Date();
+          await match.save();
 
-        emitMatchState(match);
-      } catch (err) {
-        console.error('match:move error:', err);
-      }
+          emitMatchState(match);
+        } catch (err) {
+          console.error('match:move error:', err);
+        }
+      });
     });
 
-    // Reveal a cell via power-up.
-    socket.on('match:powerup', async ({ matchId, userId, cell }) => {
-      try {
-        const match = await Match.findById(matchId);
-        if (!match) return;
-        const player = String(match.player1) === String(userId) ? 1 : 2;
-        if (!player) return;
+    // Reveal a cell via power-up. Power-ups are per-player but can be used
+    // at ANY time (no turns).
+    socket.on('match:powerup', ({ matchId, userId, cell }) => {
+      enqueueMatchOp(matchId, async () => {
+        try {
+          const match = await Match.findById(matchId);
+          if (!match) return;
+          const player = String(match.player1) === String(userId) ? 1 : 2;
+          if (!player) return;
 
-        const res = usePowerUp(match, player, cell);
-        if (!res.ok) {
-          socket.emit('error', { message: res.reason });
-          return;
+          const res = usePowerUp(match, player, cell);
+          if (!res.ok) {
+            socket.emit('error', { message: res.reason });
+            return;
+          }
+
+          match.moveHistory.push({
+            player,
+            cell,
+            value: res.value,
+            isNote: false,
+            isPowerUp: true,
+            timestamp: new Date(),
+          });
+          match.lastMoveAt = new Date();
+          await match.save();
+
+          emitMatchState(match);
+        } catch (err) {
+          console.error('match:powerup error:', err);
         }
-
-        match.moveHistory.push({
-          player,
-          cell,
-          value: res.value,
-          isNote: false,
-          isPowerUp: true,
-          timestamp: new Date(),
-        });
-        match.turn = player === 1 ? 2 : 1;
-        match.turnNumber += 1;
-        match.lastMoveAt = new Date();
-        await match.save();
-
-        emitMatchState(match);
-      } catch (err) {
-        console.error('match:powerup error:', err);
-      }
+      });
     });
 
     socket.on('match:resign', async ({ matchId, userId }) => {
