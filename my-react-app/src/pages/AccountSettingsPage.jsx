@@ -1,6 +1,8 @@
 import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
 import { useAuth } from "../auth/AuthContext";
 import Navbar from "../components/Navbar";
+import { fadeUp } from "../components/motion/presets";
 
 function AccountSettingsPage() {
   const { user } = useAuth();
@@ -27,7 +29,12 @@ function AccountSettingsPage() {
         </header>
 
         {/* Identity Section */}
-        <section className="flex gap-8 items-start pb-12 border-b border-ink-black">
+        <motion.section
+          className="flex gap-8 items-start pb-12 border-b border-ink-black"
+          variants={fadeUp}
+          initial="hidden"
+          animate="visible"
+        >
           <div className="w-24 h-24 bg-ink-black text-paper-white flex items-center justify-center flex-shrink-0">
             <span className="font-headline-md text-headline-md">{initials}</span>
           </div>
@@ -53,10 +60,16 @@ function AccountSettingsPage() {
               />
             </div>
           </div>
-        </section>
+        </motion.section>
 
         {/* Password Section */}
-        <section className="flex flex-col gap-6 pb-12 border-b border-ink-black">
+        <motion.section
+          className="flex flex-col gap-6 pb-12 border-b border-ink-black"
+          variants={fadeUp}
+          initial="hidden"
+          animate="visible"
+          transition={{ delay: 0.08 }}
+        >
           <h2 className="font-label-mono text-label-mono uppercase tracking-widest">
             Security
           </h2>
@@ -85,10 +98,16 @@ function AccountSettingsPage() {
               Update Password
             </button>
           </div>
-        </section>
+        </motion.section>
 
         {/* Preferences Section */}
-        <section className="flex flex-col gap-8 pb-12 border-b border-ink-black">
+        <motion.section
+          className="flex flex-col gap-8 pb-12 border-b border-ink-black"
+          variants={fadeUp}
+          initial="hidden"
+          animate="visible"
+          transition={{ delay: 0.16 }}
+        >
           <h2 className="font-label-mono text-label-mono uppercase tracking-widest">
             Preferences
           </h2>
@@ -130,11 +149,17 @@ function AccountSettingsPage() {
               Theme
             </label>
             <div className="flex gap-4">
-              <button className="w-8 h-8 bg-paper-white border border-ink-black shadow-[0_0_0_2px_#1A1A1A]"></button>
-              <button className="w-8 h-8 bg-ink-black border border-ink-black hover:shadow-[0_0_0_1px_#1A1A1A]"></button>
+              <motion.button
+                whileTap={{ scale: 0.9 }}
+                className="w-8 h-8 bg-paper-white border border-ink-black shadow-[0_0_0_2px_#1A1A1A]"
+              ></motion.button>
+              <motion.button
+                whileTap={{ scale: 0.9 }}
+                className="w-8 h-8 bg-ink-black border border-ink-black hover:shadow-[0_0_0_1px_#1A1A1A]"
+              ></motion.button>
             </div>
           </div>
-        </section>
+        </motion.section>
 
         {/* Bottom Actions */}
         <section className="flex flex-col gap-6 items-center pt-4">

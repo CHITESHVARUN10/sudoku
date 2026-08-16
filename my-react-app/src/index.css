@@ -402,6 +402,11 @@ body {
   background-color: rgba(196, 63, 63, 0.3);
 }
 
+/* Inline-block so the framer pop scale animation on a mark has a layout box. */
+.mp-cell-mark-pop {
+  display: inline-block;
+}
+
 .mp-sudoku-cell.notes {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
 import { useHistory } from "../contexts/HistoryContext";
 import { useDaily } from "../contexts/DailyContext";
 import Navbar from "../components/Navbar";
@@ -60,7 +61,12 @@ function DailyArchivePage() {
 
           {/* Today's Daily */}
           {today && (
-            <div className="mb-8 border-2 border-ink-black p-4 flex items-center justify-between">
+            <motion.div
+              className="mb-8 border-2 border-ink-black p-4 flex items-center justify-between"
+              initial={{ opacity: 0, y: -14 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+            >
               <div>
                 <div className="font-label-mono text-label-mono uppercase tracking-widest text-note-gray mb-1">
                   Today's Daily Puzzle
@@ -77,7 +83,7 @@ function DailyArchivePage() {
               >
                 Play
               </Link>
-            </div>
+            </motion.div>
           )}
 
         {/* Ledger List View */}
@@ -109,9 +115,15 @@ function DailyArchivePage() {
             </div>
           )}
           {games.map((game, i) => (
-            <Link
+            <motion.div
               key={game._id || i}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: Math.min(i * 0.05, 0.4), duration: 0.3 }}
+            >
+            <Link
               to={`/results/${game._id}`}
+              whileHover={{ x: 4 }}
               className="group grid grid-cols-12 gap-4 py-6 border-b border-ink-black hover:bg-surface-container-low transition-colors duration-150 cursor-pointer items-center text-body-md"
             >
               <div className="col-span-2 font-label-mono text-label-mono text-ink-black">
@@ -129,6 +141,7 @@ function DailyArchivePage() {
                 {formatTime(game.timeSec)}
               </div>
             </Link>
+            </motion.div>
           ))}
 
           {/* Empty State — only when there are truly no games */}

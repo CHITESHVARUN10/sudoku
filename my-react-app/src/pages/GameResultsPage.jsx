@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { motion } from "framer-motion";
 import { useHistory } from "../contexts/HistoryContext";
 import Navbar from "../components/Navbar";
+import { staggerParent, staggerChild } from "../components/motion/presets";
 
 function formatTime(sec) {
   if (sec == null || isNaN(sec)) return "—";
@@ -78,7 +80,12 @@ function GameResultsPage() {
         {game && !error && (
           <>
             {/* Header Section */}
-            <header className="mb-margin-lg">
+            <motion.header
+              className="mb-margin-lg"
+              initial={{ opacity: 0, scale: 0.92 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ type: "spring", stiffness: 260, damping: 20 }}
+            >
               <h1 className="font-display-lg text-display-lg text-ink-black mb-grid-unit">
                 {game.result === "Win" || game.result === "Solved"
                   ? "Victory"
@@ -91,43 +98,37 @@ function GameResultsPage() {
                 {game.difficulty} Difficulty · {game.mode} Session
                 {oppName ? ` · vs ${oppName}` : ""}
               </p>
-            </header>
+            </motion.header>
 
             {/* Stats Summary */}
-            <section className="border-t-hairline border-b-hairline border-ink-black py-margin-md mb-margin-lg flex flex-row items-center justify-between">
-              <div className="flex-1 text-center border-r-hairline border-ink-black px-margin-sm">
-                <span className="block font-headline-md text-headline-md text-ink-black">
-                  {formatTime(game.timeSec)}
-                </span>
-                <span className="block font-label-mono text-label-mono text-note-gray mt-grid-unit text-sm uppercase tracking-widest">
-                  Time
-                </span>
-              </div>
-              <div className="flex-1 text-center border-r-hairline border-ink-black px-margin-sm">
-                <span className="block font-headline-md text-headline-md text-ink-black">
-                  {game.mistakes ?? 0}
-                </span>
-                <span className="block font-label-mono text-label-mono text-note-gray mt-grid-unit text-sm uppercase tracking-widest">
-                  Mistakes
-                </span>
-              </div>
-              <div className="flex-1 text-center border-r-hairline border-ink-black px-margin-sm">
-                <span className="block font-headline-md text-headline-md text-ink-black">
-                  {game.movesCount ?? moves.length}
-                </span>
-                <span className="block font-label-mono text-label-mono text-note-gray mt-grid-unit text-sm uppercase tracking-widest">
-                  Moves
-                </span>
-              </div>
-              <div className="flex-1 text-center px-margin-sm">
-                <span className="block font-headline-md text-headline-md text-ink-black">
-                  {game.score ?? 0}
-                </span>
-                <span className="block font-label-mono text-label-mono text-note-gray mt-grid-unit text-sm uppercase tracking-widest">
-                  Score
-                </span>
-              </div>
-            </section>
+            <motion.section
+              className="border-t-hairline border-b-hairline border-ink-black py-margin-md mb-margin-lg flex flex-row items-center justify-between"
+              variants={staggerParent}
+              initial="hidden"
+              animate="visible"
+            >
+              {[
+                { label: "Time", value: formatTime(game.timeSec) },
+                { label: "Mistakes", value: game.mistakes ?? 0 },
+                { label: "Moves", value: game.movesCount ?? moves.length },
+                { label: "Score", value: game.score ?? 0 },
+              ].map((stat) => (
+                <motion.div
+                  key={stat.label}
+                  variants={staggerChild}
+                  className={`flex-1 text-center px-margin-sm ${
+                    stat.label !== "Score" ? "border-r-hairline border-ink-black" : ""
+                  }`}
+                >
+                  <span className="block font-headline-md text-headline-md text-ink-black">
+                    {stat.value}
+                  </span>
+                  <span className="block font-label-mono text-label-mono text-note-gray mt-grid-unit text-sm uppercase tracking-widest">
+                    {stat.label}
+                  </span>
+                </motion.div>
+              ))}
+            </motion.section>
 
             {/* Move History Ledger */}
             <section className="flex-grow overflow-auto mb-margin-lg">
@@ -143,7 +144,12 @@ function GameResultsPage() {
               )}
 
               {moves.length ? (
-                moves.map((move, i) => {
+                <motion.div
+                  variants={staggerParent}
+                  initial="hidden"
+                  animate="visible"
+                >
+                  {moves.slice(0, 30).map((move, i) => {
                   const cellLabel = `R${Math.floor(move.cell / 9) + 1}C${
                     (move.cell % 9) + 1
                   }`;
@@ -151,8 +157,9 @@ function GameResultsPage() {
                     move.isPowerUp ? " ⚡" : ""
                   }${move.correct === false ? " ✗" : ""}`;
                   return isMultiplayer ? (
-                    <div
+                    <motion.div
                       key={i}
+                      variants={staggerChild}
                       className="grid grid-cols-2 border-b border-ink-black/20 font-grid-notes text-grid-notes text-ink-black"
                     >
                       <div className="py-3 px-2 border-r border-ink-black/20">
@@ -161,19 +168,21 @@ function GameResultsPage() {
                       <div className="py-3 px-2">
                         {move.player === oppSeat ? text : ""}
                       </div>
-                    </div>
+                    </motion.div>
                   ) : (
-                    <div
+                    <motion.div
                       key={i}
+                      variants={staggerChild}
                       className="border-b-hairline border-ink-black group hover:bg-surface-container-high transition-colors duration-150 font-grid-notes text-grid-notes text-ink-black"
                     >
                       <div className="py-3 px-2">
                         <span className="text-note-gray mr-2">{i + 1}.</span>
                         {text}
                       </div>
-                    </div>
+                    </motion.div>
                   );
-                })
+                })}
+                </motion.div>
               ) : (
                 <div className="py-8 text-center font-body-md text-body-md text-secondary">
                   No moves recorded for this game.
@@ -187,24 +196,30 @@ function GameResultsPage() {
       {/* Action Row (Bottom) */}
       <footer className="mt-auto px-margin-sm md:px-margin-lg max-w-screen-2xl mx-auto w-full pb-margin-lg">
         <nav className="flex flex-col sm:flex-row items-center justify-start border-t-hairline border-b-hairline border-ink-black py-margin-sm">
+          <motion.div whileTap={{ scale: 0.98 }} className="contents">
           <Link
             to="/practice"
             className="font-label-mono text-label-mono text-ink-black hover:text-note-gray transition-colors uppercase tracking-widest text-sm px-margin-md border-r-hairline border-ink-black sm:w-auto w-full text-center sm:text-left py-2 sm:py-0"
           >
             Rematch
           </Link>
+          </motion.div>
+          <motion.div whileTap={{ scale: 0.98 }} className="contents">
           <Link
             to="/practice"
             className="font-label-mono text-label-mono text-ink-black hover:text-note-gray transition-colors uppercase tracking-widest text-sm px-margin-md border-r-hairline border-ink-black sm:w-auto w-full text-center sm:text-left py-2 sm:py-0"
           >
             New Game
           </Link>
+          </motion.div>
+          <motion.div whileTap={{ scale: 0.98 }} className="contents">
           <Link
             to="/archive"
             className="font-label-mono text-label-mono text-ink-black hover:text-note-gray transition-colors uppercase tracking-widest text-sm px-margin-md sm:w-auto w-full text-center sm:text-left py-2 sm:py-0"
           >
             Back to Archive
           </Link>
+          </motion.div>
         </nav>
       </footer>
     </div>

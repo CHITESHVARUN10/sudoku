@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import { DIFFICULTY_BANDS } from "../config/difficulty";
 import { usePractice } from "../contexts/PracticeContext";
 import { useDaily } from "../contexts/DailyContext";
@@ -375,7 +376,14 @@ function SinglePlayerGameBoardPage() {
                     onClick={() => handleCellClick(index)}
                   >
                     {value != null ? (
-                      value
+                      <motion.span
+                        key={`${index}-${value}`}
+                        initial={{ scale: 0.85, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ duration: 0.15, ease: "easeOut" }}
+                      >
+                        {value}
+                      </motion.span>
                     ) : notesSet.length ? (
                       <span className="notes-grid">{notesSet.join("")}</span>
                     ) : (

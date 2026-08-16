@@ -1,5 +1,8 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import Navbar from "../components/Navbar";
+import { scaleIn, staggerParent, staggerChild } from "../components/motion/presets";
 
 // Local diagram: a 9x9 grid with one row, one column, and one 3x3 box highlighted
 function RulesDiagram() {
@@ -52,6 +55,21 @@ function RulesDiagram() {
 }
 
 function HowToPlayPage() {
+  const [openAcc, setOpenAcc] = useState(null);
+
+  const TECHNIQUES = [
+    {
+      key: "naked-singles",
+      title: "Naked Singles",
+      body: "When only one number is possible in a cell due to constraints in its row, column, and box.",
+    },
+    {
+      key: "pencil-marks",
+      title: "Pencil Marks",
+      body: "Noting down potential candidates in a cell to help eliminate possibilities logically.",
+    },
+  ];
+
   return (
     <div className="bg-paper-white text-ink-black min-h-screen flex flex-col font-body-md antialiased selection:bg-ink-blue selection:text-paper-white">
       {/* Shared Navbar */}
@@ -61,101 +79,139 @@ function HowToPlayPage() {
       <main className="flex-grow flex justify-center py-margin-lg px-margin-sm md:px-margin-lg">
         <article className="w-full max-w-[600px] flex flex-col gap-12">
           {/* Intro */}
-          <section className="flex flex-col gap-6">
-            <h1 className="font-display-lg text-display-lg text-ink-black">
+          <motion.section
+            className="flex flex-col gap-6"
+            variants={staggerParent}
+            initial="hidden"
+            animate="visible"
+          >
+            <motion.h1
+              variants={staggerChild}
+              className="font-display-lg text-display-lg text-ink-black"
+            >
               Rules of the Arena
-            </h1>
-            <p className="font-headline-md text-[24px] leading-relaxed text-ink-black opacity-90">
+            </motion.h1>
+            <motion.p
+              variants={staggerChild}
+              className="font-headline-md text-[24px] leading-relaxed text-ink-black opacity-90"
+            >
               Fill the grid so every row, column, and 3x3 box contains the
               numbers 1 through 9 exactly once.
-            </p>
-          </section>
+            </motion.p>
+          </motion.section>
 
           {/* Diagram */}
-          <figure className="w-full py-8 flex justify-center">
+          <motion.figure
+            className="w-full py-8 flex justify-center"
+            variants={scaleIn}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-60px" }}
+          >
             <RulesDiagram />
-          </figure>
+          </motion.figure>
 
           {/* Numbered List */}
-          <section className="flex flex-col gap-8">
-            <div className="flex gap-6 items-start">
-              <div className="font-display-lg text-display-lg text-ink-blue w-12 flex-shrink-0">
-                1
-              </div>
-              <div className="flex flex-col gap-2 pt-2">
-                <h3 className="font-headline-sm text-headline-sm text-ink-black font-semibold">
-                  Unique Placements
-                </h3>
-                <p className="font-body-lg text-body-lg text-secondary">
-                  Each digit must appear once per row.
-                </p>
-              </div>
-            </div>
-            <div className="flex gap-6 items-start">
-              <div className="font-display-lg text-display-lg text-ink-blue w-12 flex-shrink-0">
-                2
-              </div>
-              <div className="flex flex-col gap-2 pt-2">
-                <h3 className="font-headline-sm text-headline-sm text-ink-black font-semibold">
-                  Vertical Integrity
-                </h3>
-                <p className="font-body-lg text-body-lg text-secondary">
-                  Each column must hold a complete set without repeats.
-                </p>
-              </div>
-            </div>
-            <div className="flex gap-6 items-start">
-              <div className="font-display-lg text-display-lg text-ink-blue w-12 flex-shrink-0">
-                3
-              </div>
-              <div className="flex flex-col gap-2 pt-2">
-                <h3 className="font-headline-sm text-headline-sm text-ink-black font-semibold">
-                  Box Boundaries
-                </h3>
-                <p className="font-body-lg text-body-lg text-secondary">
-                  Each 3x3 subgrid must also be logically complete.
-                </p>
-              </div>
-            </div>
-          </section>
+          <motion.section
+            className="flex flex-col gap-8"
+            variants={staggerParent}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-60px" }}
+          >
+            {[
+              {
+                num: "1",
+                title: "Unique Placements",
+                body: "Each digit must appear once per row.",
+              },
+              {
+                num: "2",
+                title: "Vertical Integrity",
+                body: "Each column must hold a complete set without repeats.",
+              },
+              {
+                num: "3",
+                title: "Box Boundaries",
+                body: "Each 3x3 subgrid must also be logically complete.",
+              },
+            ].map((step) => (
+              <motion.div
+                key={step.num}
+                variants={staggerChild}
+                className="flex gap-6 items-start"
+              >
+                <div className="font-display-lg text-display-lg text-ink-blue w-12 flex-shrink-0">
+                  {step.num}
+                </div>
+                <div className="flex flex-col gap-2 pt-2">
+                  <h3 className="font-headline-sm text-headline-sm text-ink-black font-semibold">
+                    {step.title}
+                  </h3>
+                  <p className="font-body-lg text-body-lg text-secondary">
+                    {step.body}
+                  </p>
+                </div>
+              </motion.div>
+            ))}
+          </motion.section>
 
           {/* Secondary Section: Techniques */}
           <section className="pt-8 flex flex-col border-t border-ink-black gap-0">
             <h2 className="font-headline-md text-headline-md text-ink-black mb-4">
               Common Techniques
             </h2>
-            <details className="group border-b border-ink-black border-opacity-20">
-              <summary className="flex justify-between items-center cursor-pointer py-4 hover:bg-black/5 transition-colors list-none px-2">
-                <span className="font-body-lg text-body-lg text-ink-black font-medium">
-                  Naked Singles
-                </span>
-                <span className="material-symbols-outlined group-open:rotate-180 transition-transform text-ink-black">
-                  expand_more
-                </span>
-              </summary>
-              <div className="p-4 pt-0 font-body-md text-body-md text-secondary">
-                When only one number is possible in a cell due to constraints
-                in its row, column, and box.
-              </div>
-            </details>
-            <details className="group border-b border-ink-black border-opacity-20">
-              <summary className="flex justify-between items-center cursor-pointer py-4 hover:bg-black/5 transition-colors list-none px-2">
-                <span className="font-body-lg text-body-lg text-ink-black font-medium">
-                  Pencil Marks
-                </span>
-                <span className="material-symbols-outlined group-open:rotate-180 transition-transform text-ink-black">
-                  expand_more
-                </span>
-              </summary>
-              <div className="p-4 pt-0 font-body-md text-body-md text-secondary">
-                Noting down potential candidates in a cell to help eliminate
-                possibilities logically.
-              </div>
-            </details>
+            {TECHNIQUES.map((t) => {
+              const isOpen = openAcc === t.key;
+              return (
+                <div
+                  key={t.key}
+                  className="border-b border-ink-black border-opacity-20"
+                >
+                  <button
+                    onClick={() => setOpenAcc(isOpen ? null : t.key)}
+                    className="flex justify-between items-center cursor-pointer py-4 hover:bg-black/5 transition-colors list-none px-2 w-full text-left"
+                    aria-expanded={isOpen}
+                  >
+                    <span className="font-body-lg text-body-lg text-ink-black font-medium">
+                      {t.title}
+                    </span>
+                    <motion.span
+                      className="material-symbols-outlined text-ink-black"
+                      animate={{ rotate: isOpen ? 180 : 0 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      expand_more
+                    </motion.span>
+                  </button>
+                  <AnimatePresence initial={false}>
+                    {isOpen && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.22, ease: "easeOut" }}
+                        className="overflow-hidden"
+                      >
+                        <div className="p-4 pt-0 font-body-md text-body-md text-secondary">
+                          {t.body}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              );
+            })}
           </section>
 
           {/* Bottom Action */}
-          <div className="pt-12 pb-8 flex justify-center">
+          <motion.div
+            className="pt-12 pb-8 flex justify-center"
+            initial={{ opacity: 0, y: 12 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+          >
             <Link
               to="/practice"
               className="font-label-mono text-label-mono text-ink-black tracking-widest hover:text-ink-blue transition-colors flex items-center gap-2 border-b border-transparent hover:border-ink-blue pb-1 uppercase"
@@ -163,7 +219,7 @@ function HowToPlayPage() {
               Ready? Start a puzzle
               <span className="material-symbols-outlined text-sm">arrow_forward</span>
             </Link>
-          </div>
+          </motion.div>
         </article>
       </main>
 

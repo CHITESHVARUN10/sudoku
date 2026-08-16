@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../auth/AuthContext";
 import { useSocket } from "../contexts/SocketContext";
 import { useRoom } from "../contexts/RoomContext";
@@ -302,7 +303,15 @@ function MultiplayerGameBoardPage() {
             <div className="flex gap-6 mt-2 font-label-mono text-[14px]">
               <span className="text-ink-black">
                 You:{" "}
-                <b>{match?.scores?.[myIndex === 0 ? "p1" : "p2"] ?? 0}</b>
+                <motion.b
+                  key={match?.scores?.[myIndex === 0 ? "p1" : "p2"] ?? 0}
+                  initial={{ scale: 1.25 }}
+                  animate={{ scale: 1 }}
+                  transition={{ duration: 0.2 }}
+                  className="inline-block"
+                >
+                  {match?.scores?.[myIndex === 0 ? "p1" : "p2"] ?? 0}
+                </motion.b>
               </span>
               <span className="text-secondary">
                 Opp:{" "}
@@ -380,6 +389,7 @@ function MultiplayerGameBoardPage() {
               const cls = `mp-sudoku-cell ${status || ""} ${
                 isSelected ? "selected" : ""
               }`;
+              const ownKey = status === "wrong" || status === "locked";
               return (
                 <div
                   key={index}
@@ -387,7 +397,15 @@ function MultiplayerGameBoardPage() {
                   onClick={() => handleCellClick(index)}
                 >
                   {value != null ? (
-                    value
+                    <motion.span
+                      key={`${index}-${value}`}
+                      initial={{ scale: 0.85, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ duration: 0.15, ease: "easeOut" }}
+                      className={ownKey ? "mp-cell-mark-pop" : undefined}
+                    >
+                      {value}
+                    </motion.span>
                   ) : notesSet.length ? (
                     <span className="notes-grid">{notesSet.join("")}</span>
                   ) : (
@@ -472,22 +490,45 @@ function MultiplayerGameBoardPage() {
 
             {/* Mode indicator: always tell the player what the next press does */}
             <div className="flex items-center gap-2 font-label-mono text-[12px] uppercase tracking-widest">
-              {notesMode ? (
-                <span className="flex items-center gap-2 bg-ink-blue text-paper-white px-2 py-1">
-                  <span className="material-symbols-outlined text-[16px]">edit</span>
-                  Notes mode ON — pencil marks only
-                </span>
-              ) : powerUpArmed ? (
-                <span className="flex items-center gap-2 bg-tertiary text-on-tertiary px-2 py-1">
-                  <span className="material-symbols-outlined text-[16px]">lightbulb</span>
-                  Power-up armed — click a cell to reveal
-                </span>
-              ) : (
-                <span className="flex items-center gap-2 text-secondary">
-                  <span className="material-symbols-outlined text-[16px]">keyboard</span>
-                  Writing numbers
-                </span>
-              )}
+              <AnimatePresence mode="wait" initial={false}>
+                {notesMode ? (
+                  <motion.span
+                    key="notes"
+                    className="flex items-center gap-2 bg-ink-blue text-paper-white px-2 py-1"
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    transition={{ duration: 0.15 }}
+                  >
+                    <span className="material-symbols-outlined text-[16px]">edit</span>
+                    Notes mode ON — pencil marks only
+                  </motion.span>
+                ) : powerUpArmed ? (
+                  <motion.span
+                    key="powerup"
+                    className="flex items-center gap-2 bg-tertiary text-on-tertiary px-2 py-1"
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    transition={{ duration: 0.15 }}
+                  >
+                    <span className="material-symbols-outlined text-[16px]">lightbulb</span>
+                    Power-up armed — click a cell to reveal
+                  </motion.span>
+                ) : (
+                  <motion.span
+                    key="write"
+                    className="flex items-center gap-2 text-secondary"
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    transition={{ duration: 0.15 }}
+                  >
+                    <span className="material-symbols-outlined text-[16px]">keyboard</span>
+                    Writing numbers
+                  </motion.span>
+                )}
+              </AnimatePresence>
             </div>
 
             {/* Move History Log */}
@@ -499,32 +540,37 @@ function MultiplayerGameBoardPage() {
                 <div className="p-2 text-center">{opponentName}</div>
               </div>
               <div className="move-history flex-1 overflow-y-auto p-0 m-0 font-label-mono text-[14px]">
-                {(match?.moveHistory || []).map((entry, i) => {
-                  const cellLabel = `R${Math.floor(entry.cell / 9) + 1}C${
-                    (entry.cell % 9) + 1
-                  }`;
-                  const isMine = entry.player === mySeat;
-                  // Only show the opponent WHICH cell they marked — never the
-                  // value or whether it was right/wrong (that leaks info).
-                  const text = isMine
-                    ? `${cellLabel} → ${entry.value}${
-                        entry.isPowerUp ? " ⚡" : ""
-                      }${entry.correct === false ? " ✗" : ""}`
-                    : cellLabel;
-                  return (
-                    <div
-                      key={i}
-                      className="grid grid-cols-2 border-b border-ink-black/20 hover:bg-surface-container-low"
-                    >
-                      <div className="p-2 border-r border-ink-black/20 text-center">
-                        {entry.player === mySeat ? text : ""}
-                      </div>
-                      <div className="p-2 text-center">
-                        {entry.player === oppSeat ? text : ""}
-                      </div>
-                    </div>
-                  );
-                })}
+                <AnimatePresence initial={false}>
+                  {(match?.moveHistory || []).map((entry, i) => {
+                    const cellLabel = `R${Math.floor(entry.cell / 9) + 1}C${
+                      (entry.cell % 9) + 1
+                    }`;
+                    const isMine = entry.player === mySeat;
+                    // Only show the opponent WHICH cell they marked — never the
+                    // value or whether it was right/wrong (that leaks info).
+                    const text = isMine
+                      ? `${cellLabel} → ${entry.value}${
+                          entry.isPowerUp ? " ⚡" : ""
+                        }${entry.correct === false ? " ✗" : ""}`
+                      : cellLabel;
+                    return (
+                      <motion.div
+                        key={`${entry.player}-${entry.cell}-${i}`}
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.2, ease: "easeOut" }}
+                        className="grid grid-cols-2 border-b border-ink-black/20 hover:bg-surface-container-low"
+                      >
+                        <div className="p-2 border-r border-ink-black/20 text-center">
+                          {entry.player === mySeat ? text : ""}
+                        </div>
+                        <div className="p-2 text-center">
+                          {entry.player === oppSeat ? text : ""}
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </AnimatePresence>
                 {!match?.moveHistory?.length && (
                   <div className="p-4 text-center text-secondary text-[12px]">
                     No moves yet.

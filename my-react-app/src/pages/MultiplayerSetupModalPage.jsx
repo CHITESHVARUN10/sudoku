@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../auth/AuthContext";
 import { useRoom } from "../contexts/RoomContext";
 import { useSocket } from "../contexts/SocketContext";
 import { useMatch } from "../contexts/MatchContext";
 import { useHistory } from "../contexts/HistoryContext";
 import Navbar from "../components/Navbar";
+import { staggerParent, staggerChild } from "../components/motion/presets";
 import {
   DIFFICULTY_BANDS,
   clueColor,
@@ -130,29 +132,42 @@ function MultiplayerSetupModalPage() {
         </header>
 
         {/* Active match resume banner */}
-        {activeMatch && (
-          <div className="mb-margin-md border-2 border-ink-black bg-surface-variant p-4 flex items-center justify-between gap-4 flex-wrap">
-            <div className="font-body-md text-body-md">
-              Active match — {activeMatch.difficulty} ·{" "}
-              {activeMatch.clueCount} clues · your score{" "}
-              <b>
-                {String(activeMatch.player1) === String(user?._id)
-                  ? activeMatch.scores?.p1 ?? 0
-                  : activeMatch.scores?.p2 ?? 0}
-              </b>
-            </div>
-            <button
-              onClick={resumeMatch}
-              className="bg-ink-black text-paper-white px-4 py-2 font-label-mono text-label-mono uppercase tracking-wider hover:bg-ink-blue transition-colors"
+        <AnimatePresence>
+          {activeMatch && (
+            <motion.div
+              className="mb-margin-md border-2 border-ink-black bg-surface-variant p-4 flex items-center justify-between gap-4 flex-wrap"
+              initial={{ opacity: 0, y: -12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
             >
-              Rejoin Match
-            </button>
-          </div>
-        )}
+              <div className="font-body-md text-body-md">
+                Active match — {activeMatch.difficulty} ·{" "}
+                {activeMatch.clueCount} clues · your score{" "}
+                <b>
+                  {String(activeMatch.player1) === String(user?._id)
+                    ? activeMatch.scores?.p1 ?? 0
+                    : activeMatch.scores?.p2 ?? 0}
+                </b>
+              </div>
+              <button
+                onClick={resumeMatch}
+                className="bg-ink-black text-paper-white px-4 py-2 font-label-mono text-label-mono uppercase tracking-wider hover:bg-ink-blue transition-colors"
+              >
+                Rejoin Match
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-margin-lg">
+        <motion.div
+          className="grid grid-cols-1 lg:grid-cols-2 gap-margin-lg"
+          variants={staggerParent}
+          initial="hidden"
+          animate="visible"
+        >
           {/* Left: Create Match */}
-          <section className="border-2 border-ink-black p-margin-md">
+          <motion.section className="border-2 border-ink-black p-margin-md" variants={staggerChild}>
             <h2 className="font-headline-sm text-headline-sm uppercase tracking-widest border-b border-ink-black pb-2 mb-margin-md">
               Create Match
             </h2>
@@ -221,35 +236,41 @@ function MultiplayerSetupModalPage() {
                 <span className="font-label-mono text-grid-notes uppercase tracking-widest text-secondary">
                   Clues
                 </span>
-                <button
+                <motion.button
                   type="button"
+                  whileTap={{ scale: 0.92 }}
                   aria-label="Fewer clues (harder)"
                   onClick={() => adjustClueCount(-1)}
                   disabled={clueCount <= band.min}
                   className="w-10 h-10 border-2 border-ink-black font-headline-sm text-headline-sm hover:bg-surface-variant transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                 >
                   −
-                </button>
+                </motion.button>
                 <div className="flex-1 flex flex-col items-center">
-                  <span
+                  <motion.span
+                    key={clueCount}
+                    initial={{ scale: 0.85, opacity: 0.4 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ duration: 0.15, ease: "easeOut" }}
                     className="font-headline-md text-headline-md font-bold px-4 py-1 border-2 border-ink-black transition-colors duration-200"
                     style={{ backgroundColor: clueColor(clueCount, band) }}
                   >
                     {clueCount}
-                  </span>
+                  </motion.span>
                   <span className="font-label-mono text-[11px] uppercase tracking-widest text-secondary mt-1">
                     {band.min} – {band.max} · base {band.base}
                   </span>
                 </div>
-                <button
+                <motion.button
                   type="button"
+                  whileTap={{ scale: 0.92 }}
                   aria-label="More clues (easier)"
                   onClick={() => adjustClueCount(1)}
                   disabled={clueCount >= band.max}
                   className="w-10 h-10 border-2 border-ink-black font-headline-sm text-headline-sm hover:bg-surface-variant transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                 >
                   +
-                </button>
+                </motion.button>
               </div>
               <p className="font-body-md text-grid-notes text-note-gray mt-2 text-right italic">
                 {clueCount >= band.base
@@ -286,27 +307,29 @@ function MultiplayerSetupModalPage() {
                     <span className="font-label-mono text-grid-notes uppercase tracking-widest text-secondary">
                       Max / player
                     </span>
-                    <button
+                    <motion.button
                       type="button"
+                      whileTap={{ scale: 0.92 }}
                       aria-label="Fewer power-ups"
                       onClick={() => setPowerUps((p) => Math.max(1, p - 1))}
                       disabled={powerUps <= 1}
                       className="w-8 h-8 border-2 border-ink-black font-headline-sm hover:bg-surface-variant transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                     >
                       −
-                    </button>
+                    </motion.button>
                     <span className="font-headline-md text-headline-md font-bold w-8 text-center">
                       {powerUps}
                     </span>
-                    <button
+                    <motion.button
                       type="button"
+                      whileTap={{ scale: 0.92 }}
                       aria-label="More power-ups"
                       onClick={() => setPowerUps((p) => Math.min(3, p + 1))}
                       disabled={powerUps >= 3}
                       className="w-8 h-8 border-2 border-ink-black font-headline-sm hover:bg-surface-variant transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                     >
                       +
-                    </button>
+                    </motion.button>
                   </div>
                 )}
               </div>
@@ -324,8 +347,9 @@ function MultiplayerSetupModalPage() {
               </label>
               <div className="flex border-[2px] border-ink-black flex-wrap">
                 {TIMER_OPTIONS.map((opt) => (
-                  <button
+                  <motion.button
                     key={opt}
+                    whileTap={{ scale: 0.97 }}
                     onClick={() => setTimerMin(opt)}
                     className={`flex-1 py-2 font-label-mono text-grid-notes uppercase tracking-wider transition-colors ${
                       timerMin === opt
@@ -334,7 +358,7 @@ function MultiplayerSetupModalPage() {
                     }`}
                   >
                     {opt === 0 ? "Off" : `${opt}m`}
-                  </button>
+                  </motion.button>
                 ))}
               </div>
               <p className="font-body-md text-grid-notes text-note-gray mt-2 text-right italic">
@@ -344,16 +368,23 @@ function MultiplayerSetupModalPage() {
               </p>
             </div>
 
-            {error && (
-              <p
-                className="font-body-md text-body-md text-error-red border border-error-red bg-error-red/10 px-3 py-2 mb-margin-md"
-                role="alert"
-              >
-                {error}
-              </p>
-            )}
+            <AnimatePresence>
+              {error && (
+                <motion.p
+                  className="font-body-md text-body-md text-error-red border border-error-red bg-error-red/10 px-3 py-2 mb-margin-md"
+                  role="alert"
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.2, ease: "easeOut" }}
+                >
+                  {error}
+                </motion.p>
+              )}
+            </AnimatePresence>
 
-            <button
+            <motion.button
+              whileTap={{ scale: 0.98 }}
               onClick={handleInitialize}
               disabled={creating}
               className="w-full bg-ink-black text-paper-white py-4 font-headline-sm text-label-mono uppercase tracking-[0.2em] hover:bg-ink-blue transition-colors hard-shadow border border-ink-black group flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -362,11 +393,11 @@ function MultiplayerSetupModalPage() {
               <span className="material-symbols-outlined group-hover:translate-x-1 transition-transform">
                 arrow_forward
               </span>
-            </button>
-          </section>
+            </motion.button>
+          </motion.section>
 
           {/* Right: Join + Past matches */}
-          <section className="flex flex-col gap-margin-lg">
+          <motion.section className="flex flex-col gap-margin-lg" variants={staggerChild}>
             {/* Join with code */}
             <div className="border-2 border-ink-black p-margin-md">
               <h2 className="font-headline-sm text-headline-sm uppercase tracking-widest border-b border-ink-black pb-2 mb-margin-md">
@@ -399,10 +430,16 @@ function MultiplayerSetupModalPage() {
                 Recent Matches
               </h2>
               {pastMatches.length ? (
-                <ul className="divide-y divide-ink-black/20">
+                <motion.ul
+                  className="divide-y divide-ink-black/20"
+                  variants={staggerParent}
+                  initial="hidden"
+                  animate="visible"
+                >
                   {pastMatches.map((g, i) => (
-                    <li
+                    <motion.li
                       key={g._id || i}
+                      variants={staggerChild}
                       className="py-2 flex items-center justify-between gap-4"
                     >
                       <div className="flex flex-col">
@@ -425,9 +462,9 @@ function MultiplayerSetupModalPage() {
                           Score {g.score}
                         </div>
                       </div>
-                    </li>
+                    </motion.li>
                   ))}
-                </ul>
+                </motion.ul>
               ) : (
                 <p className="font-body-md text-body-md text-secondary">
                   No multiplayer matches yet — create one and your results will
@@ -435,8 +472,8 @@ function MultiplayerSetupModalPage() {
                 </p>
               )}
             </div>
-          </section>
-        </div>
+          </motion.section>
+        </motion.div>
       </main>
     </div>
   );

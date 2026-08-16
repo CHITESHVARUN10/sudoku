@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { motion, useInView, useMotionValue, animate } from "framer-motion";
 import { useHistory } from "../contexts/HistoryContext";
 import Navbar from "../components/Navbar";
 
@@ -14,6 +15,30 @@ function formatDate(iso) {
   if (!iso) return "—";
   const d = new Date(iso);
   return `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getFullYear()).slice(2)}`;
+}
+
+// Counts up from 0 to `value` once the element is in view.
+function CountUp({ value, className = "" }) {
+  const ref = useRef(null);
+  const inView = useInView(ref, { once: true, margin: "-40px" });
+  const mv = useMotionValue(0);
+  const [text, setText] = useState("0");
+
+  useEffect(() => {
+    if (!inView) return;
+    const controls = animate(mv, value, {
+      duration: 0.8,
+      ease: "easeOut",
+      onUpdate: (latest) => setText(Math.round(latest).toString()),
+    });
+    return () => controls.stop();
+  }, [inView, value, mv]);
+
+  return (
+    <span ref={ref} className={className}>
+      {text}
+    </span>
+  );
 }
 
 function StatisticsPage() {
@@ -91,17 +116,19 @@ function StatisticsPage() {
               <span className="font-body-md text-body-md text-note-gray uppercase tracking-widest mb-2">
                 Games Played
               </span>
-              <span className="font-grid-number text-grid-number text-ink-black">
-                {stats?.gamesPlayed ?? 0}
-              </span>
+              <CountUp
+                value={stats?.gamesPlayed ?? 0}
+                className="font-grid-number text-grid-number text-ink-black"
+              />
             </div>
             <div className="flex flex-col md:border-r-hairline border-ink-black px-4">
               <span className="font-body-md text-body-md text-note-gray uppercase tracking-widest mb-2">
                 Win Rate
               </span>
-              <span className="font-grid-number text-grid-number text-ink-black">
-                {stats?.winRate ?? 0}%
-              </span>
+              <CountUp
+                value={stats?.winRate ?? 0}
+                className="font-grid-number text-grid-number text-ink-black"
+              />
             </div>
             <div className="flex flex-col border-r-hairline border-ink-black px-4 pl-0 md:pl-4">
               <span className="font-body-md text-body-md text-note-gray uppercase tracking-widest mb-2">
@@ -115,9 +142,10 @@ function StatisticsPage() {
               <span className="font-body-md text-body-md text-note-gray uppercase tracking-widest mb-2">
                 Current Streak
               </span>
-              <span className="font-grid-number text-grid-number text-ink-black">
-                {stats?.currentStreak ?? 0}
-              </span>
+              <CountUp
+                value={stats?.currentStreak ?? 0}
+                className="font-grid-number text-grid-number text-ink-black"
+              />
             </div>
           </section>
 
@@ -143,20 +171,28 @@ function StatisticsPage() {
                     preserveAspectRatio="none"
                     viewBox="0 0 100 100"
                   >
-                    <polyline
+                    <motion.polyline
                       fill="none"
                       points={chartPoints.join(" ")}
                       stroke="#1A1A1A"
                       strokeWidth="0.5"
                       vectorEffect="non-scaling-stroke"
+                      initial={{ pathLength: 0, opacity: 0 }}
+                      whileInView={{ pathLength: 1, opacity: 1 }}
+                      viewport={{ once: true }}
+                      transition={{ duration: 1, ease: "easeOut" }}
                     />
                     {trendPoints.map((p, i) => (
-                      <circle
+                      <motion.circle
                         key={i}
                         cx={Number(chartPoints[i].split(",")[0])}
                         cy={Number(chartPoints[i].split(",")[1])}
                         r="1.5"
                         fill="#2B3A55"
+                        initial={{ opacity: 0, scale: 0 }}
+                        whileInView={{ opacity: 1, scale: 1 }}
+                        viewport={{ once: true }}
+                        transition={{ delay: 0.6 + i * 0.08, duration: 0.3 }}
                       />
                     ))}
                   </svg>
@@ -195,10 +231,13 @@ function StatisticsPage() {
                         <span>{bar.games}</span>
                       </div>
                       <div className="w-full h-4 bg-surface-variant border-hairline border-ink-black relative">
-                        <div
+                        <motion.div
                           className="absolute top-0 left-0 h-full bg-ink-black"
-                          style={{ width: bar.width }}
-                        ></div>
+                          initial={{ width: 0 }}
+                          whileInView={{ width: bar.width }}
+                          viewport={{ once: true }}
+                          transition={{ duration: 0.6, ease: "easeOut" }}
+                        ></motion.div>
                       </div>
                     </div>
                   ))
@@ -231,8 +270,11 @@ function StatisticsPage() {
                 <tbody>
                   {games.length ? (
                     games.map((game, i) => (
-                      <tr
+                      <motion.tr
                         key={game._id || i}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: Math.min(i * 0.05, 0.4), duration: 0.3 }}
                         className="border-b-hairline border-ink-black hover:bg-surface-variant transition-colors duration-150"
                       >
                         <td className="py-4 px-2">
@@ -248,7 +290,7 @@ function StatisticsPage() {
                         <td className="py-4 px-2">{game.opponentName || "—"}</td>
                         <td className="py-4 px-2">{game.result}</td>
                         <td className="py-4 px-2 text-right">{formatTime(game.timeSec)}</td>
-                      </tr>
+                      </motion.tr>
                     ))
                   ) : (
                     <tr>

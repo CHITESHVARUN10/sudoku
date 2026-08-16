@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   DIFFICULTY_BANDS,
   clueColor,
 } from "../config/difficulty";
 import { usePractice } from "../contexts/PracticeContext";
 import Navbar from "../components/Navbar";
+import { scaleIn } from "../components/motion/presets";
 
 function SinglePlayerSetupPage() {
   const navigate = useNavigate();
@@ -79,22 +81,35 @@ function SinglePlayerSetupPage() {
       <div className="absolute inset-0 grid-bg opacity-30 pointer-events-none z-[-1]"></div>
       <main className="flex-grow flex items-center justify-center p-margin-md">
         {/* Setup Panel */}
-        <div className="bg-paper-white border border-ink-black shadow-hard max-w-md w-full p-margin-lg">
+        <motion.div
+          className="bg-paper-white border border-ink-black shadow-hard max-w-md w-full p-margin-lg"
+          variants={scaleIn}
+          initial="hidden"
+          animate="visible"
+        >
           {/* Resume Banner */}
-          {activeGame && (
-            <div className="mb-margin-md border-2 border-ink-black bg-surface-variant p-3 flex items-center justify-between gap-3">
-              <div className="font-body-md text-body-md text-ink-black">
-                In-progress {activeGame.difficulty} session — score{" "}
-                <b>{activeGame.score}</b>
-              </div>
-              <button
-                onClick={resumeActive}
-                className="bg-ink-black text-paper-white px-3 py-2 font-label-mono text-label-mono uppercase tracking-wider hover:bg-ink-blue transition-colors"
+          <AnimatePresence>
+            {activeGame && (
+              <motion.div
+                className="mb-margin-md border-2 border-ink-black bg-surface-variant p-3 flex items-center justify-between gap-3"
+                initial={{ opacity: 0, y: -12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -12 }}
+                transition={{ duration: 0.25, ease: "easeOut" }}
               >
-                Resume
-              </button>
-            </div>
-          )}
+                <div className="font-body-md text-body-md text-ink-black">
+                  In-progress {activeGame.difficulty} session — score{" "}
+                  <b>{activeGame.score}</b>
+                </div>
+                <button
+                  onClick={resumeActive}
+                  className="bg-ink-black text-paper-white px-3 py-2 font-label-mono text-label-mono uppercase tracking-wider hover:bg-ink-blue transition-colors"
+                >
+                  Resume
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
           <header className="mb-margin-md text-center">
             <h1 className="font-display-lg text-display-lg text-ink-black tracking-tight mb-2">
               Practice Session
@@ -111,8 +126,9 @@ function SinglePlayerSetupPage() {
               </label>
               <div className="flex border border-ink-black divide-x divide-ink-black">
                 {Object.keys(DIFFICULTY_BANDS).map((level) => (
-                  <button
+                  <motion.button
                     key={level}
+                    whileTap={{ scale: 0.97 }}
                     onClick={() => selectDifficulty(level)}
                     className={`flex-1 py-3 font-label-mono text-label-mono text-sm transition-colors focus:outline-none ${
                       difficulty === level
@@ -121,7 +137,7 @@ function SinglePlayerSetupPage() {
                     }`}
                   >
                     {level}
-                  </button>
+                  </motion.button>
                 ))}
               </div>
             </div>
@@ -131,35 +147,41 @@ function SinglePlayerSetupPage() {
               <span className="font-label-mono text-label-mono text-sm uppercase tracking-widest text-secondary">
                 Clues
               </span>
-              <button
+              <motion.button
                 type="button"
+                whileTap={{ scale: 0.92 }}
                 aria-label="Fewer clues (harder)"
                 onClick={() => adjustClueCount(-1)}
                 disabled={clueCount <= band.min}
                 className="w-9 h-9 border-2 border-ink-black font-headline-sm text-headline-sm hover:bg-surface-container transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 −
-              </button>
+              </motion.button>
               <div className="flex-1 flex flex-col items-center">
-                <span
+                <motion.span
+                  key={clueCount}
+                  initial={{ scale: 0.85, opacity: 0.4 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ duration: 0.15, ease: "easeOut" }}
                   className="font-headline-sm text-headline-sm font-bold px-3 py-1 border-2 border-ink-black transition-colors duration-200"
                   style={{ backgroundColor: clueColor(clueCount, band) }}
                 >
                   {clueCount}
-                </span>
+                </motion.span>
                 <span className="font-label-mono text-[10px] uppercase tracking-widest text-secondary mt-1">
                   {band.min} – {band.max} · base {band.base}
                 </span>
               </div>
-              <button
+              <motion.button
                 type="button"
+                whileTap={{ scale: 0.92 }}
                 aria-label="More clues (easier)"
                 onClick={() => adjustClueCount(1)}
                 disabled={clueCount >= band.max}
                 className="w-9 h-9 border-2 border-ink-black font-headline-sm text-headline-sm hover:bg-surface-container transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 +
-              </button>
+              </motion.button>
             </div>
 
             {/* Power-ups */}
@@ -186,40 +208,48 @@ function SinglePlayerSetupPage() {
                   <span className="font-label-mono text-label-mono text-xs uppercase tracking-widest text-secondary">
                     Max
                   </span>
-                  <button
+                  <motion.button
                     type="button"
+                    whileTap={{ scale: 0.92 }}
                     aria-label="Fewer power-ups"
                     onClick={() => setPowerUps((p) => Math.max(1, p - 1))}
                     disabled={powerUps <= 1}
                     className="w-8 h-8 border-2 border-ink-black font-headline-sm hover:bg-surface-container transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                   >
                     −
-                  </button>
+                  </motion.button>
                   <span className="font-headline-sm text-headline-sm font-bold w-8 text-center">
                     {powerUps}
                   </span>
-                  <button
+                  <motion.button
                     type="button"
+                    whileTap={{ scale: 0.92 }}
                     aria-label="More power-ups"
                     onClick={() => setPowerUps((p) => Math.min(3, p + 1))}
                     disabled={powerUps >= 3}
                     className="w-8 h-8 border-2 border-ink-black font-headline-sm hover:bg-surface-container transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                   >
                     +
-                  </button>
+                  </motion.button>
                 </div>
               )}
             </div>
 
             {/* Action */}
-            {error && (
-              <p
-                className="font-body-md text-body-md text-error-red border border-error-red bg-error-red/10 px-3 py-2"
-                role="alert"
-              >
-                {error}
-              </p>
-            )}
+            <AnimatePresence>
+              {error && (
+                <motion.p
+                  className="font-body-md text-body-md text-error-red border border-error-red bg-error-red/10 px-3 py-2"
+                  role="alert"
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.2, ease: "easeOut" }}
+                >
+                  {error}
+                </motion.p>
+              )}
+            </AnimatePresence>
             <div className="pt-margin-sm">
               <button
                 onClick={beginPractice}
@@ -240,7 +270,7 @@ function SinglePlayerSetupPage() {
               {powerUpsEnabled ? `${powerUps} power-ups` : "no power-ups"}
             </p>
           </div>
-        </div>
+        </motion.div>
       </main>
     </div>
   );

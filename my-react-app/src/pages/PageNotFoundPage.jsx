@@ -1,4 +1,6 @@
 import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
+import { fadeUp, staggerParent, staggerChild } from "../components/motion/presets";
 
 function PageNotFoundPage() {
   return (
@@ -42,14 +44,29 @@ function PageNotFoundPage() {
 
       {/* Main Content Canvas (404 Empty State) */}
       <main className="flex-grow flex flex-col justify-center px-margin-lg py-margin-lg w-full max-w-7xl mx-auto">
-        <div className="max-w-3xl">
-          <div className="w-16 h-[1px] bg-ink-black mb-margin-md opacity-20"></div>
-          <h1 className="font-display-lg text-display-lg text-ink-black mb-margin-sm">
+        <motion.div
+          className="max-w-3xl"
+          variants={staggerParent}
+          initial="hidden"
+          animate="visible"
+        >
+          <motion.div
+            variants={fadeUp}
+            className="w-16 h-[1px] bg-ink-black mb-margin-md opacity-20"
+          ></motion.div>
+          <motion.h1
+            variants={staggerChild}
+            className="font-display-lg text-display-lg text-ink-black mb-margin-sm"
+          >
             This page wandered off the grid.
-          </h1>
-          <p className="font-body-lg text-body-lg text-note-gray mb-margin-lg max-w-2xl">
+          </motion.h1>
+          <motion.p
+            variants={staggerChild}
+            className="font-body-lg text-body-lg text-note-gray mb-margin-lg max-w-2xl"
+          >
             The square you're looking for isn't part of this puzzle.
-          </p>
+          </motion.p>
+          <motion.div variants={staggerChild}>
           <Link
             to="/"
             className="inline-flex items-center gap-2 font-label-mono text-label-mono text-ink-black group transition-all duration-150"
@@ -61,12 +78,29 @@ function PageNotFoundPage() {
               arrow_forward
             </span>
           </Link>
-          <div className="mt-margin-lg opacity-10 flex gap-grid-unit">
-            <div className="w-grid-unit h-grid-unit border border-ink-black"></div>
-            <div className="w-grid-unit h-grid-unit border border-ink-black bg-ink-black"></div>
-            <div className="w-grid-unit h-grid-unit border border-ink-black"></div>
-          </div>
-        </div>
+          </motion.div>
+          <motion.div
+            className="mt-margin-lg opacity-10 flex gap-grid-unit"
+            variants={staggerParent}
+          >
+            {[0, 1, 2].map((i) => (
+              <motion.div
+                key={i}
+                variants={{
+                  hidden: { opacity: 0, y: 12 },
+                  visible: {
+                    opacity: 1,
+                    y: 0,
+                    transition: { type: "spring", stiffness: 300, damping: 14 },
+                  },
+                }}
+                className={`w-grid-unit h-grid-unit border border-ink-black ${
+                  i === 1 ? "bg-ink-black" : ""
+                }`}
+              />
+            ))}
+          </motion.div>
+        </motion.div>
       </main>
 
       {/* Footer */}

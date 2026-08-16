@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import { useRoom } from "../contexts/RoomContext";
 import { useSocket } from "../contexts/SocketContext";
 import { useAuth } from "../auth/AuthContext";
 import Navbar from "../components/Navbar";
+import { scaleIn, staggerParent, staggerChild } from "../components/motion/presets";
 
 const ROOM_TTL_MS = 5 * 60 * 1000; // room code active for 5 minutes
 const POLL_INTERVAL_MS = 2000;
@@ -134,18 +136,35 @@ function WaitingRoomPage() {
       <Navbar />
 
       <main className="flex-grow flex items-center justify-center p-margin-md">
-        <div className="w-full max-w-2xl border-2 border-ink-black shadow-hard bg-paper-white p-margin-lg">
+        <motion.div
+          className="w-full max-w-2xl border-2 border-ink-black shadow-hard bg-paper-white p-margin-lg"
+          variants={scaleIn}
+          initial="hidden"
+          animate="visible"
+        >
           <header className="mb-margin-md border-b border-ink-black pb-margin-md">
             <h3 className="font-label-mono text-label-mono uppercase tracking-widest text-note-gray mb-2">
               Invite
             </h3>
-            <h1 className="font-display-lg text-display-lg">
+            <motion.h1
+              className="font-display-lg text-display-lg"
+              animate={
+                expired || cancelled
+                  ? { opacity: 1 }
+                  : { opacity: [1, 0.55, 1] }
+              }
+              transition={
+                expired || cancelled
+                  ? { duration: 0.3 }
+                  : { duration: 2, repeat: Infinity, ease: "easeInOut" }
+              }
+            >
               {expired
                 ? "Room Expired"
                 : cancelled
                 ? "Room Cancelled"
                 : "Waiting for Player 2"}
-            </h1>
+            </motion.h1>
           </header>
 
           {expired ? (
@@ -165,18 +184,30 @@ function WaitingRoomPage() {
             <>
               <div className="flex items-center justify-between gap-6 mb-margin-md flex-wrap">
                 <div>
-                  <div className="border-2 border-ink-black p-margin-sm inline-block mb-2">
-                    <span className="font-grid-number text-grid-number tracking-widest text-ink-black">
-                      {roomCode}
-                    </span>
-                  </div>
+                  <motion.div
+                    className="border-2 border-ink-black p-margin-sm inline-block mb-2"
+                    initial="hidden"
+                    animate="visible"
+                    variants={staggerParent}
+                  >
+                    {String(roomCode).split("").map((ch, i) => (
+                      <motion.span
+                        key={`${ch}-${i}`}
+                        variants={staggerChild}
+                        className="font-grid-number text-grid-number tracking-widest text-ink-black"
+                      >
+                        {ch}
+                      </motion.span>
+                    ))}
+                  </motion.div>
                   <div>
-                    <button
+                    <motion.button
+                      whileTap={{ scale: 0.96 }}
                       className="font-body-md text-body-md text-ink-black hover:underline decoration-1 underline-offset-4 bg-transparent border-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-ink-black focus:ring-offset-2 p-1 -ml-1 transition-all"
                       onClick={handleCopy}
                     >
                       {copied ? "Copied" : "Copy Link"}
-                    </button>
+                    </motion.button>
                   </div>
                 </div>
 
@@ -219,9 +250,10 @@ function WaitingRoomPage() {
 
               {/* TTL progress bar */}
               <div className="mb-2 h-1 w-full bg-surface-variant">
-                <div
-                  className="h-1 bg-ink-black transition-all duration-1000"
-                  style={{ width: `${progressPct}%` }}
+                <motion.div
+                  className="h-1 bg-ink-black"
+                  animate={{ width: `${progressPct}%` }}
+                  transition={{ duration: 1, ease: "linear" }}
                 />
               </div>
               <div className="mb-margin-md">
@@ -230,26 +262,33 @@ function WaitingRoomPage() {
                 </span>
               </div>
 
-              {error && (
-                <p
-                  className="font-body-md text-body-md text-error-red border border-error-red bg-error-red/10 px-3 py-2 mb-margin-md"
-                  role="alert"
-                >
-                  {error}
-                </p>
-              )}
+              <AnimatePresence>
+                {error && (
+                  <motion.p
+                    className="font-body-md text-body-md text-error-red border border-error-red bg-error-red/10 px-3 py-2 mb-margin-md"
+                    role="alert"
+                    initial={{ opacity: 0, y: -6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    transition={{ duration: 0.2, ease: "easeOut" }}
+                  >
+                    {error}
+                  </motion.p>
+                )}
+              </AnimatePresence>
 
               <div className="pt-margin-md border-t border-ink-black/20">
-                <button
+                <motion.button
+                  whileTap={{ scale: 0.97 }}
                   onClick={handleCancel}
                   className="font-body-md text-body-md text-note-gray hover:text-ink-black transition-colors underline decoration-1 underline-offset-4 bg-transparent border-none cursor-pointer"
                 >
                   Cancel Room
-                </button>
+                </motion.button>
               </div>
             </>
           )}
-        </div>
+        </motion.div>
       </main>
     </div>
   );

@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../auth/AuthContext";
+import { fadeUp, staggerParent, staggerChild } from "../components/motion/presets";
 
 function RegisterPage() {
   const { user, register } = useAuth();
@@ -37,19 +39,29 @@ function RegisterPage() {
       <main className="flex-grow flex relative z-0">
         <div className="flex w-full min-h-screen">
           {/* Left Panel */}
-          <div className="hidden lg:flex flex-col justify-center items-center w-1/2 bg-ink-black p-margin-lg text-surface">
-            <div className="max-w-md">
+          <motion.div
+            className="hidden lg:flex flex-col justify-center items-center w-1/2 bg-ink-black p-margin-lg text-surface"
+            variants={staggerParent}
+            initial="hidden"
+            animate="visible"
+          >
+            <motion.div className="max-w-md" variants={staggerChild}>
               <h1 className="font-display-lg text-display-lg tracking-[0.2em] uppercase mb-4">
                 Sudoku Arena
               </h1>
               <p className="font-body-lg text-body-lg opacity-80">
                 Join the Arena. Enter the grid.
               </p>
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
           {/* Right Panel */}
           <div className="flex flex-col justify-center items-center w-full lg:w-1/2 bg-surface p-margin-md md:p-margin-lg">
-            <div className="w-full max-w-[360px]">
+            <motion.div
+              className="w-full max-w-[360px]"
+              variants={fadeUp}
+              initial="hidden"
+              animate="visible"
+            >
               <h2 className="font-display-lg text-headline-md uppercase tracking-widest mb-margin-md">
                 Create Account
               </h2>
@@ -126,23 +138,30 @@ function RegisterPage() {
                   </p>
                 </div>
                 {/* API Error */}
-                {error && (
-                  <p
-                    className="font-body-md text-body-md text-error-red border border-error-red bg-error-red/10 px-3 py-2"
-                    role="alert"
-                  >
-                    {error}
-                  </p>
-                )}
+                <AnimatePresence>
+                  {error && (
+                    <motion.p
+                      className="font-body-md text-body-md text-error-red border border-error-red bg-error-red/10 px-3 py-2"
+                      role="alert"
+                      initial={{ opacity: 0, y: -6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -6 }}
+                      transition={{ duration: 0.2, ease: "easeOut" }}
+                    >
+                      {error}
+                    </motion.p>
+                  )}
+                </AnimatePresence>
                 {/* Submit Button */}
                 <div className="pt-4">
-                  <button
+                  <motion.button
+                    whileTap={{ scale: 0.98 }}
                     className="w-full bg-ink-black text-surface font-label-mono text-label-mono uppercase tracking-[0.2em] py-4 px-6 hover:bg-opacity-90 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ink-black disabled:opacity-50 disabled:cursor-not-allowed"
                     type="submit"
                     disabled={submitting}
                   >
                     {submitting ? "CREATING…" : "Create Account"}
-                  </button>
+                  </motion.button>
                 </div>
               </form>
               <div className="mt-margin-md">
@@ -153,7 +172,7 @@ function RegisterPage() {
                   Already have an account? Log in.
                 </Link>
               </div>
-            </div>
+            </motion.div>
           </div>
         </div>
       </main>

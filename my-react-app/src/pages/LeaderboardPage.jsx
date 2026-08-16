@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
 import { useLeaderboard } from "../contexts/LeaderboardContext";
 import Navbar from "../components/Navbar";
+import { staggerParent, staggerChild } from "../components/motion/presets";
 
 const PERIODS = [
   { key: "all-time", label: "All Time" },
@@ -44,13 +46,20 @@ function LeaderboardPage() {
                   {i > 0 && <span className="w-hairline h-4 bg-ink-black opacity-20"></span>}
                   <button
                     onClick={() => handlePeriod(p.key)}
-                    className={
+                    className={`relative pb-1 transition-colors ${
                       activePeriod === p.key
-                        ? "text-ink-black border-b-[2px] border-ink-blue pb-1 font-medium transition-colors"
-                        : "text-secondary hover:text-ink-black transition-colors pb-1"
-                    }
+                        ? "text-ink-black font-medium"
+                        : "text-secondary hover:text-ink-black"
+                    }`}
                   >
                     {p.label}
+                    {activePeriod === p.key && (
+                      <motion.span
+                        layoutId="period-underline"
+                        className="absolute left-0 right-0 bottom-0 h-[2px] bg-ink-blue"
+                        transition={{ duration: 0.2, ease: "easeOut" }}
+                      />
+                    )}
                   </button>
                 </span>
               ))}
@@ -80,11 +89,17 @@ function LeaderboardPage() {
             </div>
 
             {/* Table Body */}
-            <div className="flex flex-col">
+            <motion.div
+              className="flex flex-col"
+              variants={staggerParent}
+              initial="hidden"
+              animate="visible"
+            >
               {entries.length ? (
                 entries.map((row, i) => (
-                  <div
+                  <motion.div
                     key={row._id || i}
+                    variants={staggerChild}
                     className="grid grid-cols-12 gap-4 py-4 border-b border-ink-black/20 hover:bg-ink-blue/5 transition-colors"
                   >
                     <div
@@ -112,14 +127,14 @@ function LeaderboardPage() {
                     <div className="col-span-2 text-right font-label-mono text-label-mono flex items-center justify-end">
                       {row.elo}
                     </div>
-                  </div>
+                  </motion.div>
                 ))
               ) : (
                 <div className="py-8 text-center font-body-md text-body-md text-secondary">
                   No rankings yet — play a few games to climb the board.
                 </div>
               )}
-            </div>
+            </motion.div>
           </div>
 
           {/* Pagination/More (Editorial Style) */}

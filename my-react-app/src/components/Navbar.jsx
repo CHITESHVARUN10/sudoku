@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../auth/AuthContext";
 
 function Navbar() {
@@ -69,7 +70,12 @@ function Navbar() {
   );
 
   return (
-    <nav className="w-full bg-background border-b border-ink-black">
+    <motion.nav
+      className="w-full bg-background border-b border-ink-black"
+      initial={{ y: -16, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ duration: 0.3, ease: "easeOut" }}
+    >
       <div className="flex justify-between items-center w-full px-margin-lg py-4 max-w-7xl mx-auto">
         <NavLink
           to="/"
@@ -94,13 +100,21 @@ function Navbar() {
       </div>
 
       {/* Mobile dropdown */}
-      {menuOpen && (
-        <div className="md:hidden border-t border-ink-black bg-paper-white px-margin-lg py-4 flex flex-col gap-4">
-          {links}
-          {authLinks}
-        </div>
-      )}
-    </nav>
+      <AnimatePresence>
+        {menuOpen && (
+          <motion.div
+            className="md:hidden border-t border-ink-black bg-paper-white px-margin-lg py-4 flex flex-col gap-4"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+          >
+            {links}
+            {authLinks}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.nav>
   );
 }
 

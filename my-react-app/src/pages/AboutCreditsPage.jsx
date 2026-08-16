@@ -1,4 +1,7 @@
 import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
+import Reveal from "../components/motion/Reveal";
+import { staggerParent, staggerChild } from "../components/motion/presets";
 
 function AboutCreditsPage() {
   return (
@@ -61,39 +64,50 @@ function AboutCreditsPage() {
             <div className="w-16 h-[1px] bg-ink-black"></div>
           </header>
           <div className="space-y-6 font-body-lg text-body-lg text-ink-black/90 mb-16">
-            <p>
-              Sudoku Arena is built on a simple premise: a puzzle should be a
-              quiet conversation between the solver and the logic. In a digital
-              landscape cluttered with notifications, arbitrary rewards, and
-              visual noise, we sought to create a sanctuary for focus.
-            </p>
-            <p>
-              Our design philosophy borrows heavily from the tactile world of
-              broadsheet newspapers and high-quality printed puzzle books. We
-              believe that the interface should recede, leaving only the beauty
-              of a well-typeset grid and the elegant constraints of the numbers
-              themselves.
-            </p>
-            <p>
-              This platform is an ongoing experiment in editorial
-              minimalism—where every pixel is intentional, every line serves as
-              architecture, and nothing distracts from the pure satisfaction of
-              a completed board.
-            </p>
+            <Reveal>
+              <p>
+                Sudoku Arena is built on a simple premise: a puzzle should be a
+                quiet conversation between the solver and the logic. In a digital
+                landscape cluttered with notifications, arbitrary rewards, and
+                visual noise, we sought to create a sanctuary for focus.
+              </p>
+            </Reveal>
+            <Reveal delay={0.05}>
+              <p>
+                Our design philosophy borrows heavily from the tactile world of
+                broadsheet newspapers and high-quality printed puzzle books. We
+                believe that the interface should recede, leaving only the beauty
+                of a well-typeset grid and the elegant constraints of the numbers
+                themselves.
+              </p>
+            </Reveal>
+            <Reveal delay={0.1}>
+              <p>
+                This platform is an ongoing experiment in editorial
+                minimalism—where every pixel is intentional, every line serves as
+                architecture, and nothing distracts from the pure satisfaction of
+                a completed board.
+              </p>
+            </Reveal>
           </div>
           <section className="mb-16">
             <h2 className="font-label-mono text-label-mono text-secondary mb-4 uppercase tracking-widest text-[14px]">
               Built With
             </h2>
-            <div className="flex flex-wrap items-center gap-4 font-body-md text-body-md text-ink-black">
-              <span>React</span>
-              <div className="h-4 w-[1px] bg-ink-black/30"></div>
-              <span>Tailwind CSS</span>
-              <div className="h-4 w-[1px] bg-ink-black/30"></div>
-              <span>Vite</span>
-              <div className="h-4 w-[1px] bg-ink-black/30"></div>
-              <span>TypeScript</span>
-            </div>
+            <motion.div
+              className="flex flex-wrap items-center gap-4 font-body-md text-body-md text-ink-black"
+              variants={staggerParent}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: "-40px" }}
+            >
+              {["React", "Tailwind CSS", "Vite", "TypeScript"].map((tech, i) => (
+                <motion.div key={tech} variants={staggerChild} className="flex items-center gap-4">
+                  {i > 0 && <span className="h-4 w-[1px] bg-ink-black/30"></span>}
+                  <span>{tech}</span>
+                </motion.div>
+              ))}
+            </motion.div>
           </section>
           <footer>
             <a
