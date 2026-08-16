@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import SudokuGridArt from "./SudokuGridArt";
+import HeroSudokuBoard from "./HeroSudokuBoard";
 import { fadeUp, scaleIn } from "./motion/presets";
 
 function Hero() {
@@ -47,19 +47,13 @@ function Hero() {
         </motion.div>
       </div>
       <motion.div
-        className="relative w-full aspect-square flex justify-center items-center p-8 bg-paper-white border border-ink-black"
+        className="relative w-full aspect-square flex justify-center items-center p-8 md:p-12 bg-paper-white border border-ink-black overflow-hidden"
         variants={scaleIn}
         initial="hidden"
         animate="visible"
         transition={{ delay: 0.2 }}
       >
-        <motion.div
-          animate={{ y: [0, -8, 0] }}
-          transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-          className="w-full h-full flex items-center justify-center"
-        >
-          <SudokuGridArt className="w-full h-full object-contain mix-blend-multiply" />
-        </motion.div>
+        <HeroSudokuBoard className="w-full max-w-md" />
       </motion.div>
     </section>
   );

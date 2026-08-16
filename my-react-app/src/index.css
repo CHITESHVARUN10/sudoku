@@ -451,3 +451,70 @@ body {
 .move-history::-webkit-scrollbar-thumb {
   background: #1a1a1a;
 }
+
+/* ---------------------------------------------------------------------------
+   Hero sudoku board — one flat 9x9 grid, tilted by a single container
+   transform. No per-cell 3D; the whole plane rotates as one unit.
+--------------------------------------------------------------------------- */
+
+.hero-sudoku-tilt {
+  /* The one and only 3D transform — applied to the container, never cells. */
+  transform: perspective(1000px) rotateY(-15deg) rotateX(5deg);
+  transform-style: preserve-3d;
+  /* Very slow drift: ±2deg rotateY over 9s. Static tilt for reduced motion. */
+  animation: hero-tilt-drift 9s ease-in-out infinite alternate;
+}
+
+@keyframes hero-tilt-drift {
+  from {
+    transform: perspective(1000px) rotateY(-17deg) rotateX(5deg);
+  }
+  to {
+    transform: perspective(1000px) rotateY(-13deg) rotateX(5deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-sudoku-tilt {
+    animation: none;
+    transform: perspective(1000px) rotateY(-15deg) rotateX(5deg);
+  }
+}
+
+.hero-sudoku-grid {
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  gap: 1px;
+  background-color: #1a1a1a; /* shows through the 1px gaps as hairlines */
+  border: 2px solid #1a1a1a;
+  width: 100%;
+  aspect-ratio: 1;
+}
+
+.hero-sudoku-cell {
+  background-color: #f7f5f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "JetBrains Mono", monospace;
+  font-size: clamp(14px, 2.6vw, 26px);
+  font-weight: 700;
+  color: #1a1a1a;
+  line-height: 1;
+}
+
+/* Thick right borders after every 3rd cell (3x3 block separators) */
+.hero-sudoku-cell:nth-child(3n) {
+  border-right: 2px solid #1a1a1a;
+}
+
+/* Thick bottom borders under rows 3 and 6 (block separators) */
+.hero-sudoku-cell:nth-child(n + 19):nth-child(-n + 27),
+.hero-sudoku-cell:nth-child(n + 46):nth-child(-n + 54) {
+  border-bottom: 2px solid #1a1a1a;
+}
+
+/* No extra right border on the last column */
+.hero-sudoku-cell:nth-child(9n) {
+  border-right: none;
+}

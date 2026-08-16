@@ -9,6 +9,7 @@ import { DailyProvider } from "./contexts/DailyContext";
 import { MatchProvider } from "./contexts/MatchContext";
 import { SocketProvider } from "./contexts/SocketContext";
 import PageTransition from "./components/motion/PageTransition";
+import SudokuBackground from "./components/three/SudokuBackground";
 import LandingPage from "./pages/LandingPage";
 import SinglePlayerSetupPage from "./pages/SinglePlayerSetupPage";
 import SinglePlayerGameBoardPage from "./pages/SinglePlayerGameBoardPage";
@@ -52,17 +53,20 @@ const routes = [
 function AnimatedRoutes() {
   const location = useLocation();
   return (
-    <AnimatePresence mode="wait">
-      <Routes location={location} key={location.pathname}>
-        {routes.map((r) => (
-          <Route
-            key={r.path}
-            path={r.path}
-            element={<PageTransition>{r.element}</PageTransition>}
-          />
-        ))}
-      </Routes>
-    </AnimatePresence>
+    <>
+      <SudokuBackground />
+      <AnimatePresence mode="wait">
+        <Routes location={location} key={location.pathname}>
+          {routes.map((r) => (
+            <Route
+              key={r.path}
+              path={r.path}
+              element={<PageTransition>{r.element}</PageTransition>}
+            />
+          ))}
+        </Routes>
+      </AnimatePresence>
+    </>
   );
 }
 

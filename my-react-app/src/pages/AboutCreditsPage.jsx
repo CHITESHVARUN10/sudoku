@@ -2,8 +2,11 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import Reveal from "../components/motion/Reveal";
 import { staggerParent, staggerChild } from "../components/motion/presets";
+import useReducedMotion from "../components/three/useReducedMotion";
+import { GridLattice } from "../components/three/lazy";
 
 function AboutCreditsPage() {
+  const reducedMotion = useReducedMotion();
   return (
     <div className="bg-paper-white text-ink-black min-h-screen flex flex-col font-body-md text-body-md selection:bg-ink-blue/10 selection:text-ink-black">
       {/* TopNavBar */}
@@ -55,8 +58,14 @@ function AboutCreditsPage() {
       </nav>
 
       {/* Main Content Canvas */}
-      <main className="flex-grow w-full max-w-screen-2xl mx-auto px-margin-lg py-margin-lg md:py-[120px]">
-        <article className="max-w-[600px] ml-0 md:ml-[10%]">
+      <main className="flex-grow w-full max-w-screen-2xl mx-auto px-margin-lg py-margin-lg md:py-[120px] relative overflow-hidden">
+        {/* Faint lattice behind the article. */}
+        <GridLattice
+          reducedMotion={reducedMotion}
+          className="absolute inset-0 w-full h-full"
+          style={{ opacity: 0.12 }}
+        />
+        <article className="max-w-[600px] ml-0 md:ml-[10%] relative z-10">
           <header className="mb-12">
             <h1 className="font-display-lg text-display-lg text-ink-black mb-6">
               About

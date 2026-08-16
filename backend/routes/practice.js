@@ -98,7 +98,7 @@ Router.post('/:id/move', async (req, res) => {
       correct: value == null ? null : correct,
     });
     game.board = board;
-    game.score = Math.max(0, game.score + delta);
+    game.score += delta;
     if (timeElapsedSec != null) game.timeElapsedSec = timeElapsedSec;
     if (correct === false) game.mistakes += 1;
 
@@ -195,7 +195,7 @@ Router.post('/:id/hint', async (req, res) => {
       correct: true,
     });
     game.board = board;
-    game.score = Math.max(0, game.score + delta);
+    game.score += delta;
     game.powerUpsUsed += 1;
     game.moves.push({
       cell,

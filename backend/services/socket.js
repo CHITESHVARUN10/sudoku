@@ -582,7 +582,7 @@ function attachSocket(server) {
 
           match.board = board;
           const scoreKey = player === 1 ? 'p1' : 'p2';
-          match.scores[scoreKey] = Math.max(0, match.scores[scoreKey] + delta);
+          match.scores[scoreKey] += delta;
           if (!correct) match.mistakes[scoreKey] += 1;
           match.moveHistory.push({
             player,

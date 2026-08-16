@@ -6,6 +6,8 @@ import { useSocket } from "../contexts/SocketContext";
 import { useAuth } from "../auth/AuthContext";
 import Navbar from "../components/Navbar";
 import { scaleIn, staggerParent, staggerChild } from "../components/motion/presets";
+import useReducedMotion from "../components/three/useReducedMotion";
+import { SudokuCube } from "../components/three/lazy";
 
 const ROOM_TTL_MS = 5 * 60 * 1000; // room code active for 5 minutes
 const POLL_INTERVAL_MS = 2000;
@@ -16,6 +18,7 @@ function WaitingRoomPage() {
   const { getRoom, cancelRoom } = useRoom();
   const { joinRoom } = useSocket();
   const { user } = useAuth();
+  const reducedMotion = useReducedMotion();
 
   // Room code passed from the setup page via route state (host created the room).
   const roomCode = location.state?.roomCode || null;
@@ -131,11 +134,18 @@ function WaitingRoomPage() {
   );
 
   return (
-    <div className="min-h-screen flex flex-col bg-paper-white text-ink-black font-body-md text-body-md antialiased">
+    <div className="min-h-screen flex flex-col bg-paper-white text-ink-black font-body-md text-body-md antialiased relative overflow-hidden">
+      {/* Subtle 3D cube behind the waiting panel. */}
+      <SudokuCube
+        reducedMotion={reducedMotion}
+        className="absolute inset-0 w-full h-full opacity-30"
+      />
       {/* Shared Navbar */}
-      <Navbar />
+      <div className="relative z-10">
+        <Navbar />
+      </div>
 
-      <main className="flex-grow flex items-center justify-center p-margin-md">
+      <main className="flex-grow flex items-center justify-center p-margin-md relative z-10">
         <motion.div
           className="w-full max-w-2xl border-2 border-ink-black shadow-hard bg-paper-white p-margin-lg"
           variants={scaleIn}

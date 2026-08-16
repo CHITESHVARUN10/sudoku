@@ -1,8 +1,11 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { fadeUp, staggerParent, staggerChild } from "../components/motion/presets";
+import useReducedMotion from "../components/three/useReducedMotion";
+import { SudokuCube } from "../components/three/lazy";
 
 function PageNotFoundPage() {
+  const reducedMotion = useReducedMotion();
   return (
     <div className="bg-paper-white min-h-screen flex flex-col text-ink-black font-body-md selection:bg-ink-blue selection:text-paper-white">
       {/* TopAppBar */}
@@ -43,9 +46,14 @@ function PageNotFoundPage() {
       </header>
 
       {/* Main Content Canvas (404 Empty State) */}
-      <main className="flex-grow flex flex-col justify-center px-margin-lg py-margin-lg w-full max-w-7xl mx-auto">
+      <main className="flex-grow flex flex-col justify-center px-margin-lg py-margin-lg w-full max-w-7xl mx-auto relative">
+        {/* Slow 3D cube drifting behind the headline. */}
+        <SudokuCube
+          reducedMotion={reducedMotion}
+          className="absolute inset-0 w-full h-full opacity-30 pointer-events-none"
+        />
         <motion.div
-          className="max-w-3xl"
+          className="max-w-3xl relative z-10"
           variants={staggerParent}
           initial="hidden"
           animate="visible"
