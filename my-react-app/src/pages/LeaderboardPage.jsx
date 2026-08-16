@@ -10,14 +10,19 @@ const PERIODS = [
 ];
 
 function LeaderboardPage() {
-  const { entries, fetchLeaderboard, loading, error } = useLeaderboard();
+  const { entries, page, totalPages, fetchLeaderboard, loading, error } = useLeaderboard();
   const [activePeriod, setActivePeriod] = useState("all-time");
 
   useEffect(() => {
-    fetchLeaderboard(activePeriod).catch(() => {});
+    fetchLeaderboard(activePeriod, 1, false).catch(() => {});
   }, [activePeriod, fetchLeaderboard]);
 
   const handlePeriod = (key) => setActivePeriod(key);
+
+  const handleLoadMore = () => {
+    if (page >= totalPages || loading) return;
+    fetchLeaderboard(activePeriod, page + 1, true).catch(() => {});
+  };
   return (
     <div className="min-h-screen flex flex-col font-body-md text-body-md bg-paper-white text-ink-black">
       {/* Shared Navbar */}
@@ -119,8 +124,16 @@ function LeaderboardPage() {
 
           {/* Pagination/More (Editorial Style) */}
           <div className="mt-8 flex justify-center">
-            <button className="font-body-md text-body-md text-ink-black border-b border-ink-black pb-1 hover:text-ink-blue hover:border-ink-blue transition-colors uppercase tracking-widest text-sm">
-              Load More Entries
+            <button
+              onClick={handleLoadMore}
+              disabled={page >= totalPages || loading}
+              className="font-body-md text-body-md text-ink-black border-b border-ink-black pb-1 hover:text-ink-blue hover:border-ink-blue transition-colors uppercase tracking-widest text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {loading
+                ? "Loading…"
+                : page >= totalPages
+                ? "No more entries"
+                : "Load More Entries"}
             </button>
           </div>
         </div>

@@ -71,6 +71,12 @@ export function AuthProvider({ children }) {
     }
   }, [persist]);
 
+  const refreshUser = useCallback(async () => {
+    const res = await apiClient.get("/auth/user/me");
+    if (res.user) persist(res.user);
+    return res.user;
+  }, [persist]);
+
   const updateProfile = useCallback(async (updates) => {
     const res = await apiClient.put("/auth/user/profile", updates);
     persist(res.user);
@@ -98,6 +104,7 @@ export function AuthProvider({ children }) {
         login,
         register,
         logout,
+        refreshUser,
         updateProfile,
         forgotPassword,
         resetPassword,

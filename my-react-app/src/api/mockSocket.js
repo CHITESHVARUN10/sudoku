@@ -82,14 +82,18 @@ export function createMockSocket({ onStart, onState, onEnd, onOppDisconnect, onO
     oppMoves++;
     state.scores.p2 += 10;
     state.moveHistory.push({
-      num: state.moveHistory.length + 1,
-      p1: null,
-      p2: `R${Math.floor(idx / 9) + 1}C${(idx % 9) + 1} → ${SOLUTION[idx]}`,
+      player: 2,
+      cell: idx,
+      value: SOLUTION[idx],
+      isNote: false,
+      isPowerUp: false,
+      correct: true,
+      timestamp: new Date().toISOString(),
     });
 
     if (state.board.every((v) => v !== null)) {
       state.status = "completed";
-      onEnd({ winner: "opp", reason: "solved", scores: state.scores, eloDelta: 8 });
+      onEnd({ winner: 2, reason: "solved", scores: state.scores, eloDelta: 8 });
       clearInterval(oppTimer);
       return;
     }
@@ -103,9 +107,13 @@ export function createMockSocket({ onStart, onState, onEnd, onOppDisconnect, onO
       const correct = value === SOLUTION[cell];
       state.board[cell] = value;
       state.moveHistory.push({
-        num: state.moveHistory.length + 1,
-        p1: `R${Math.floor(cell / 9) + 1}C${(cell % 9) + 1} → ${value}`,
-        p2: null,
+        player: 1,
+        cell,
+        value,
+        isNote: false,
+        isPowerUp: false,
+        correct,
+        timestamp: new Date().toISOString(),
       });
 
       if (correct) {
@@ -116,7 +124,7 @@ export function createMockSocket({ onStart, onState, onEnd, onOppDisconnect, onO
 
       if (state.board.every((v) => v !== null)) {
         state.status = "completed";
-        onEnd({ winner: "me", reason: "solved", scores: state.scores, eloDelta: 8 });
+        onEnd({ winner: 1, reason: "solved", scores: state.scores, eloDelta: 8 });
         clearInterval(oppTimer);
         return;
       }
@@ -129,14 +137,18 @@ export function createMockSocket({ onStart, onState, onEnd, onOppDisconnect, onO
       state.board[cell] = SOLUTION[cell];
       state.powerUpsLeft.p1 -= 1;
       state.moveHistory.push({
-        num: state.moveHistory.length + 1,
-        p1: `R${Math.floor(cell / 9) + 1}C${(cell % 9) + 1} → ${SOLUTION[cell]} ⚡`,
-        p2: null,
+        player: 1,
+        cell,
+        value: SOLUTION[cell],
+        isNote: false,
+        isPowerUp: true,
+        correct: true,
+        timestamp: new Date().toISOString(),
       });
 
       if (state.board.every((v) => v !== null)) {
         state.status = "completed";
-        onEnd({ winner: "me", reason: "solved", scores: state.scores, eloDelta: 8 });
+        onEnd({ winner: 1, reason: "solved", scores: state.scores, eloDelta: 8 });
         clearInterval(oppTimer);
         return;
       }
@@ -144,7 +156,7 @@ export function createMockSocket({ onStart, onState, onEnd, onOppDisconnect, onO
     },
     resign() {
       state.status = "completed";
-      onEnd({ winner: "opp", reason: "resign", scores: state.scores, eloDelta: 0 });
+      onEnd({ winner: 2, reason: "resign", scores: state.scores, eloDelta: 0 });
       clearInterval(oppTimer);
     },
     destroy() {

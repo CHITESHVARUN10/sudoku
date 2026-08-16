@@ -1,5 +1,6 @@
 const express = require('express');
 const DailyPuzzle = require('../models/DailyPuzzle');
+const Game = require('../models/Game');
 const { generatePuzzle } = require('../services/sudokuGenerator');
 const { recordGame } = require('../services/stats');
 
@@ -49,6 +50,54 @@ Router.get('/today', async (req, res) => {
     return res
       .status(500)
       .json({ success: false, message: 'Failed to fetch daily puzzle.' });
+  }
+});
+
+// POST /daily/:id/start — begin (or resume) a Game for this daily puzzle.
+Router.post('/:id/start', async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Not authenticated.' });
+    }
+    const puzzle = await DailyPuzzle.findById(req.params.id);
+    if (!puzzle) {
+      return res.status(404).json({ success: false, message: 'Puzzle not found.' });
+    }
+
+    // Resume an in-progress daily game if one exists.
+    let game = await Game.findOne({
+      user: req.user._id,
+      dailyPuzzleId: puzzle._id,
+      status: 'active',
+    });
+    if (!game) {
+      game = await Game.create({
+        user: req.user._id,
+        mode: 'Daily',
+        dailyPuzzleId: puzzle._id,
+        difficulty: puzzle.difficulty,
+        board: puzzle.grid,
+        initialBoard: puzzle.grid,
+        solution: puzzle.solution,
+        notes: Array.from({ length: 81 }, () => []),
+        status: 'active',
+        timeElapsedSec: 0,
+        mistakes: 0,
+        score: 0,
+        powerUpsTotal: 0,
+        powerUpsUsed: 0,
+        moves: [],
+      });
+    }
+
+    // Never send the solution to the client.
+    const { solution, ...safe } = game.toObject();
+    return res.status(201).json({ success: true, game: safe });
+  } catch (err) {
+    console.error('daily start error:', err);
+    return res
+      .status(500)
+      .json({ success: false, message: 'Failed to start daily puzzle.' });
   }
 });
 

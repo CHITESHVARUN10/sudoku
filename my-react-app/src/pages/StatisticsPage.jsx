@@ -45,6 +45,20 @@ function StatisticsPage() {
       })
     : [];
 
+  // Build the solve-time trend chart from real data (last 7 points).
+  const trendPoints = (stats?.solveTimeTrend || [])
+    .slice(-7)
+    .map((p) => ({ date: new Date(p.date), avgTimeSec: p.avgTimeSec || 0 }));
+  const trendMax = Math.max(60, ...trendPoints.map((p) => p.avgTimeSec));
+  const chartPoints = trendPoints.map((p, i) => {
+    const x = trendPoints.length === 1 ? 0 : (i / (trendPoints.length - 1)) * 100;
+    const y = 100 - (p.avgTimeSec / trendMax) * 90 - 5; // keep 5% headroom
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  });
+  const dayLabel = (d) =>
+    ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.getDay()];
+  const trendLabels = trendPoints.map((p) => dayLabel(p.date));
+
   return (
     <div className="antialiased min-h-screen flex flex-col">
       {/* Shared Navbar */}
@@ -123,32 +137,46 @@ function StatisticsPage() {
                   <div className="w-full h-hairline bg-note-gray opacity-20"></div>
                   <div className="w-full h-hairline bg-note-gray opacity-20"></div>
                 </div>
-                {/* Mock Line Chart SVG */}
-                <svg
-                  className="absolute inset-0 w-full h-full"
-                  preserveAspectRatio="none"
-                  viewBox="0 0 100 100"
-                >
-                  <polyline
-                    fill="none"
-                    points="0,80 20,60 40,70 60,30 80,45 100,20"
-                    stroke="#1A1A1A"
-                    strokeWidth="0.5"
-                    vectorEffect="non-scaling-stroke"
-                  />
-                </svg>
+                {chartPoints.length > 1 ? (
+                  <svg
+                    className="absolute inset-0 w-full h-full"
+                    preserveAspectRatio="none"
+                    viewBox="0 0 100 100"
+                  >
+                    <polyline
+                      fill="none"
+                      points={chartPoints.join(" ")}
+                      stroke="#1A1A1A"
+                      strokeWidth="0.5"
+                      vectorEffect="non-scaling-stroke"
+                    />
+                    {trendPoints.map((p, i) => (
+                      <circle
+                        key={i}
+                        cx={Number(chartPoints[i].split(",")[0])}
+                        cy={Number(chartPoints[i].split(",")[1])}
+                        r="1.5"
+                        fill="#2B3A55"
+                      />
+                    ))}
+                  </svg>
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center font-label-mono text-label-mono text-note-gray">
+                    No solve data yet — finish a few games to see your trend.
+                  </div>
+                )}
                 {/* Axis Labels */}
                 <div className="absolute -left-10 top-0 font-label-mono text-label-mono text-[10px] text-note-gray">
-                  10m
+                  {formatTime(Math.round(trendMax))}
                 </div>
                 <div className="absolute -left-10 bottom-0 font-label-mono text-label-mono text-[10px] text-note-gray">
                   0m
                 </div>
                 <div className="absolute left-0 -bottom-6 font-label-mono text-label-mono text-[10px] text-note-gray">
-                  Mon
+                  {trendLabels[0] || "—"}
                 </div>
                 <div className="absolute right-0 -bottom-6 font-label-mono text-label-mono text-[10px] text-note-gray">
-                  Sun
+                  {trendLabels[trendLabels.length - 1] || "—"}
                 </div>
               </div>
             </div>
@@ -207,7 +235,14 @@ function StatisticsPage() {
                         key={game._id || i}
                         className="border-b-hairline border-ink-black hover:bg-surface-variant transition-colors duration-150"
                       >
-                        <td className="py-4 px-2">{formatDate(game.createdAt)}</td>
+                        <td className="py-4 px-2">
+                          <Link
+                            to={`/results/${game._id}`}
+                            className="underline-offset-2 hover:underline"
+                          >
+                            {formatDate(game.createdAt)}
+                          </Link>
+                        </td>
                         <td className="py-4 px-2">{game.mode}</td>
                         <td className="py-4 px-2">{game.difficulty}</td>
                         <td className="py-4 px-2">{game.opponentName || "—"}</td>

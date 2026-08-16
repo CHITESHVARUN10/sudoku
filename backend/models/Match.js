@@ -48,6 +48,11 @@ const moveSchema = new Schema(
   { _id: false }
 );
 
+const noteSetSchema = {
+  type: [Number],
+  default: [],
+};
+
 const matchSchema = new Schema(
   {
     player1: {
@@ -125,6 +130,16 @@ const matchSchema = new Schema(
       // Negative allowed (wrong moves deduct).
       p1: { type: Number, default: 0 },
       p2: { type: Number, default: 0 },
+    },
+    // Wrong-move counts per player (for stats/history).
+    mistakes: {
+      p1: { type: Number, default: 0, min: 0 },
+      p2: { type: Number, default: 0, min: 0 },
+    },
+    // Per-player pencil marks (81-cell arrays of note sets).
+    notes: {
+      p1: { type: [noteSetSchema], default: [] },
+      p2: { type: [noteSetSchema], default: [] },
     },
     // Remaining power-ups per player.
     powerUpsLeft: {

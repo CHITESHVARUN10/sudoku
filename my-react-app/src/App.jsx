@@ -53,7 +53,7 @@ function App() {
                         <Route path="/stats" element={<StatisticsPage />} />
                         <Route path="/leaderboard" element={<LeaderboardPage />} />
                         <Route path="/archive" element={<DailyArchivePage />} />
-                        <Route path="/results" element={<GameResultsPage />} />
+                        <Route path="/results/:id" element={<GameResultsPage />} />
                         <Route path="/about" element={<AboutCreditsPage />} />
                         <Route path="*" element={<PageNotFoundPage />} />
                       </Routes>

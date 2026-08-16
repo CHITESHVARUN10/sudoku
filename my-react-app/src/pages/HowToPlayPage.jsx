@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import Navbar from "../components/Navbar";
 
 // Local diagram: a 9x9 grid with one row, one column, and one 3x3 box highlighted
 function RulesDiagram() {
@@ -53,36 +54,8 @@ function RulesDiagram() {
 function HowToPlayPage() {
   return (
     <div className="bg-paper-white text-ink-black min-h-screen flex flex-col font-body-md antialiased selection:bg-ink-blue selection:text-paper-white">
-      {/* TopNavBar */}
-      <header className="bg-paper-white border-b border-ink-black w-full h-16 transition-all duration-150 ease-in-out">
-        <div className="flex justify-between items-center px-margin-lg w-full max-w-[1440px] mx-auto h-full">
-          <Link
-            to="/"
-            className="font-headline-md text-headline-md font-bold tracking-tighter text-ink-black"
-          >
-            SUDOKU ARENA
-          </Link>
-          <nav className="hidden md:flex gap-8 items-center h-full">
-            <Link
-              to="/multiplayer"
-              className="text-secondary hover:text-ink-black transition-colors font-headline-sm text-headline-sm h-full flex items-center"
-            >
-              Play
-            </Link>
-            <span className="text-ink-black font-bold border-b-2 border-ink-black font-headline-sm text-headline-sm h-full flex items-center pb-[2px]">
-              Learn
-            </span>
-          </nav>
-          <div className="flex gap-4 items-center">
-            <button className="w-10 h-10 flex items-center justify-center hover:bg-secondary-container rounded-full transition-colors text-ink-black">
-              <span className="material-symbols-outlined">settings</span>
-            </button>
-            <button className="w-10 h-10 flex items-center justify-center hover:bg-secondary-container rounded-full transition-colors text-ink-black">
-              <span className="material-symbols-outlined">help</span>
-            </button>
-          </div>
-        </div>
-      </header>
+      {/* Shared Navbar */}
+      <Navbar />
 
       {/* Main Content */}
       <main className="flex-grow flex justify-center py-margin-lg px-margin-sm md:px-margin-lg">

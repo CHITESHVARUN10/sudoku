@@ -43,6 +43,20 @@ export function HistoryProvider({ children }) {
     }
   }, []);
 
+  const fetchHistoryDetail = useCallback(async (id) => {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await apiClient.get(`/stats/history/${id}`);
+      return res.game;
+    } catch (err) {
+      setError(err.message || "Failed to fetch game detail.");
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   return (
     <HistoryContext.Provider
       value={{
@@ -54,6 +68,7 @@ export function HistoryProvider({ children }) {
         error,
         fetchStats,
         fetchHistory,
+        fetchHistoryDetail,
       }}
     >
       {children}

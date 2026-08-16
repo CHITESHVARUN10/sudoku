@@ -20,7 +20,7 @@ function WaitingRoomPage() {
   const settings = location.state?.settings || null;
 
   const [copied, setCopied] = useState(false);
-  const [expiresAt] = useState(() => Date.now() + ROOM_TTL_MS);
+  const [expiresAt, setExpiresAt] = useState(() => Date.now() + ROOM_TTL_MS);
   const [remainingMs, setRemainingMs] = useState(ROOM_TTL_MS);
   const [expired, setExpired] = useState(false);
   const [cancelled, setCancelled] = useState(false);
@@ -30,6 +30,25 @@ function WaitingRoomPage() {
   useEffect(() => {
     if (!roomCode) navigate("/multiplayer", { replace: true });
   }, [roomCode, navigate]);
+
+  // Use the server's expiry time so a refresh doesn't reset the countdown.
+  useEffect(() => {
+    if (!roomCode) return;
+    let cancelled = false;
+    getRoom(roomCode)
+      .then((room) => {
+        if (cancelled || !room?.expiresAt) return;
+        const expiry = new Date(room.expiresAt).getTime();
+        if (!isNaN(expiry)) {
+          setExpiresAt(expiry);
+          setRemainingMs(Math.max(0, expiry - Date.now()));
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [roomCode, getRoom]);
 
   // Countdown ticker for room expiry.
   useEffect(() => {

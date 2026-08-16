@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { DIFFICULTY_BANDS } from "../config/difficulty";
 import { usePractice } from "../contexts/PracticeContext";
+import { useDaily } from "../contexts/DailyContext";
 import Navbar from "../components/Navbar";
 
 function formatTime(sec) {
@@ -13,9 +14,12 @@ function formatTime(sec) {
 function SinglePlayerGameBoardPage() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { resumeGame, makeMove, requestHint, fetchActiveGame, undoGame } =
+  const { resumeGame, makeMove, requestHint, fetchActiveGame, undoGame, abandonGame, saveNotes } =
     usePractice();
+  const { startDailyGame } = useDaily();
   const cfg = location.state || {};
+  const isDaily = cfg.source === "daily";
+  const dailyPuzzleId = cfg.puzzleId || null;
   const [gameId, setGameId] = useState(cfg.gameId || null);
   const [difficulty, setDifficulty] = useState(cfg.difficulty || "Medium");
   const [clueCount, setClueCount] = useState(
@@ -44,6 +48,30 @@ function SinglePlayerGameBoardPage() {
   useEffect(() => {
     if (gameId) return;
     let cancelled = false;
+
+    // Daily mode: begin/resume the daily game from the backend.
+    if (isDaily && dailyPuzzleId) {
+      startDailyGame(dailyPuzzleId)
+        .then((g) => {
+          if (cancelled) return;
+          setGameId(g._id);
+          setDifficulty(g.difficulty || "Medium");
+          setClueCount(
+            g.clueCount || DIFFICULTY_BANDS[g.difficulty || "Medium"].base
+          );
+          setPowerUpsMax(g.powerUpsTotal || 0);
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setError("Could not start the daily puzzle.");
+            setLoading(false);
+          }
+        });
+      return () => {
+        cancelled = true;
+      };
+    }
+
     fetchActiveGame()
       .then((g) => {
         if (cancelled) return;
@@ -68,7 +96,7 @@ function SinglePlayerGameBoardPage() {
     return () => {
       cancelled = true;
     };
-  }, [gameId, fetchActiveGame]);
+  }, [gameId, isDaily, dailyPuzzleId, startDailyGame, fetchActiveGame]);
 
   // Load the game from the backend when gameId becomes known.
   useEffect(() => {
@@ -92,6 +120,10 @@ function SinglePlayerGameBoardPage() {
           if (m.correct != null) fb[m.cell] = m.correct ? "correct" : "wrong";
         }
         setFeedback(fb);
+        // Restore persisted pencil marks.
+        if (Array.isArray(g.notes) && g.notes.length === 81) {
+          setNotes(g.notes.map((set) => [...(set || [])]));
+        }
       })
       .catch((err) => setError(err.message || "Failed to load game."))
       .finally(() => {
@@ -108,6 +140,17 @@ function SinglePlayerGameBoardPage() {
     const interval = setInterval(() => setElapsed((e) => e + 1), 1000);
     return () => clearInterval(interval);
   }, [solved, board]);
+
+  // Debounced persistence of pencil marks.
+  const notesRef = useRef(notes);
+  notesRef.current = notes;
+  useEffect(() => {
+    if (!gameId) return;
+    const t = setTimeout(() => {
+      saveNotes(gameId, notesRef.current).catch(() => {});
+    }, 500);
+    return () => clearTimeout(t);
+  }, [notes, gameId, saveNotes]);
 
   if (loading) {
     return (
@@ -238,6 +281,22 @@ function SinglePlayerGameBoardPage() {
     applyValue(selected, null);
   };
 
+  const handleEndPractice = async () => {
+    if (solved) {
+      navigate("/practice");
+      return;
+    }
+    if (!window.confirm("End this practice session? Your progress will be saved as abandoned.")) {
+      return;
+    }
+    try {
+      await abandonGame(gameId);
+      navigate("/practice");
+    } catch (err) {
+      setMoveError(err.message || "Failed to end game.");
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col font-body-md text-body-md text-ink-black antialiased">
       {/* Shared Navbar */}
@@ -251,7 +310,7 @@ function SinglePlayerGameBoardPage() {
             {/* Game Info Header */}
             <div className="flex justify-between items-end mb-4 border-b border-ink-black pb-2 flex-wrap gap-2">
               <div className="font-headline-sm text-headline-sm tracking-wider uppercase">
-                {difficulty} · {clueCount} clues
+                {isDaily ? "Daily" : difficulty} · {clueCount} clues
               </div>
               <div className="font-body-lg text-body-lg relative">
                 Score <b>{score}</b>
@@ -350,6 +409,12 @@ function SinglePlayerGameBoardPage() {
                 onClick={handleErase}
               >
                 Erase
+              </button>
+              <button
+                className="font-body-lg text-body-lg text-error-red hover:border-b hover:border-error-red pb-0.5 self-start transition-all"
+                onClick={handleEndPractice}
+              >
+                End
               </button>
             </div>
             {hintMsg && (

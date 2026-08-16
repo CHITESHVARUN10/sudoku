@@ -32,6 +32,11 @@ export function DailyProvider({ children }) {
     return res;
   }, []);
 
+  const startDailyGame = useCallback(async (puzzleId) => {
+    const res = await apiClient.post(`/daily/${puzzleId}/start`);
+    return res.game;
+  }, []);
+
   const fetchArchive = useCallback(async (date) => {
     setLoading(true);
     setError("");
@@ -57,6 +62,7 @@ export function DailyProvider({ children }) {
         fetchToday,
         solveDaily,
         fetchArchive,
+        startDailyGame,
       }}
     >
       {children}

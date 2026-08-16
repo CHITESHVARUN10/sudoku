@@ -7,12 +7,14 @@ import {
   useState,
 } from "react";
 import { createMatchSocket } from "../api/socket";
+import { useAuth } from "../auth/AuthContext";
 
 const SocketContext = createContext(null);
 
 // Wraps the real socket.io-client connection. Pages consume match state +
 // send methods; the underlying transport is swappable (mock vs real).
 export function SocketProvider({ children }) {
+  const { refreshUser } = useAuth();
   const socketRef = useRef(null);
   const [match, setMatch] = useState(null);
   const [socketConnected, setSocketConnected] = useState(false);
@@ -29,6 +31,10 @@ export function SocketProvider({ children }) {
     roomCode,
     userId,
   };
+  // Stable ref for the auth refresh so the one-time socket setup effect can
+  // call it without re-subscribing.
+  const refreshUserRef = useRef(refreshUser);
+  refreshUserRef.current = refreshUser;
 
   // Set up the socket connection once (lazy-connect; see api/socket.js).
   useEffect(() => {
@@ -38,10 +44,15 @@ export function SocketProvider({ children }) {
         setSocketConnected(true);
         setResult(null);
         setOppDisconnected(false);
+        setLastError("");
+        // A match is live — the room code is no longer needed for joining.
+        setRoomCode(null);
         sessionRef.current.matchId = data.matchId || null;
+        sessionRef.current.roomCode = null;
       },
       onState: (data) => {
         setSocketConnected(true);
+        setLastError("");
         setMatch((m) => {
           const next = { ...(m || {}), ...data };
           if (data.matchId) next.matchId = data.matchId;
@@ -52,6 +63,8 @@ export function SocketProvider({ children }) {
       onEnd: (data) => {
         setMatch((m) => (m ? { ...m, status: "completed" } : m));
         setResult(data);
+        // Elo changed on completion — refresh the stored user.
+        refreshUserRef.current?.().catch(() => {});
       },
       onConnect: () => {
         setSocketConnected(true);
@@ -85,7 +98,9 @@ export function SocketProvider({ children }) {
 
   const rejoinMatch = useCallback((matchId, uid) => {
     setUserId(uid);
+    setRoomCode(null); // match is live; room code no longer needed
     sessionRef.current.matchId = matchId;
+    sessionRef.current.roomCode = null;
     sessionRef.current.userId = uid;
     // Optimistic: let sendMove/sendPowerUp target this match immediately.
     setMatch((m) => ({ ...(m || {}), matchId, status: "active" }));
@@ -110,6 +125,15 @@ export function SocketProvider({ children }) {
     []
   );
 
+  const sendNotes = useCallback(
+    (notes) => {
+      const mid = sessionRef.current.matchId;
+      const uid = sessionRef.current.userId;
+      if (mid && uid) socketRef.current?.sendNotes(mid, uid, notes);
+    },
+    []
+  );
+
   const resign = useCallback(() => {
     const mid = sessionRef.current.matchId;
     const uid = sessionRef.current.userId;
@@ -128,6 +152,7 @@ export function SocketProvider({ children }) {
     rejoinMatch,
     sendMove,
     sendPowerUp,
+    sendNotes,
     resign,
   };
 

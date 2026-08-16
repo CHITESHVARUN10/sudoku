@@ -6,17 +6,25 @@ const LeaderboardContext = createContext(null);
 export function LeaderboardProvider({ children }) {
   const [entries, setEntries] = useState([]);
   const [period, setPeriod] = useState("all-time");
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const fetchLeaderboard = useCallback(async (periodValue = "all-time") => {
+  const fetchLeaderboard = useCallback(async (periodValue = "all-time", pageNum = 1, append = false) => {
     setLoading(true);
     setError("");
     try {
-      const res = await apiClient.get(`/leaderboard?period=${periodValue}`);
-      setEntries(res.entries);
+      const res = await apiClient.get(
+        `/leaderboard?period=${periodValue}&page=${pageNum}`
+      );
+      setEntries((prev) =>
+        append ? [...prev, ...res.entries] : res.entries
+      );
       setPeriod(res.period);
-      return res.entries;
+      setPage(res.page);
+      setTotalPages(res.totalPages);
+      return res;
     } catch (err) {
       setError(err.message || "Failed to fetch leaderboard.");
       throw err;
@@ -30,6 +38,8 @@ export function LeaderboardProvider({ children }) {
       value={{
         entries,
         period,
+        page,
+        totalPages,
         loading,
         error,
         fetchLeaderboard,

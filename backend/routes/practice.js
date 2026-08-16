@@ -98,7 +98,7 @@ Router.post('/:id/move', async (req, res) => {
       correct: value == null ? null : correct,
     });
     game.board = board;
-    game.score += delta;
+    game.score = Math.max(0, game.score + delta);
     if (timeElapsedSec != null) game.timeElapsedSec = timeElapsedSec;
     if (correct === false) game.mistakes += 1;
 
@@ -121,7 +121,7 @@ Router.post('/:id/move', async (req, res) => {
 
       await recordGame({
         userId: req.user._id,
-        mode: 'Solo',
+        mode: game.mode || 'Solo',
         difficulty: game.difficulty,
         result: 'Solved',
         timeSec: game.timeElapsedSec,
@@ -130,6 +130,7 @@ Router.post('/:id/move', async (req, res) => {
         score: game.score,
         eloDelta: 0,
         powerUpsUsed: game.powerUpsUsed,
+        gameId: game._id,
       });
     }
 
@@ -194,7 +195,7 @@ Router.post('/:id/hint', async (req, res) => {
       correct: true,
     });
     game.board = board;
-    game.score += delta;
+    game.score = Math.max(0, game.score + delta);
     game.powerUpsUsed += 1;
     game.moves.push({
       cell,
@@ -214,7 +215,7 @@ Router.post('/:id/hint', async (req, res) => {
       solved = true;
       await recordGame({
         userId: req.user._id,
-        mode: 'Solo',
+        mode: game.mode || 'Solo',
         difficulty: game.difficulty,
         result: 'Solved',
         timeSec: game.timeElapsedSec,
@@ -223,6 +224,7 @@ Router.post('/:id/hint', async (req, res) => {
         score: game.score,
         eloDelta: 0,
         powerUpsUsed: game.powerUpsUsed,
+        gameId: game._id,
       });
     }
 
@@ -286,6 +288,78 @@ Router.post('/:id/undo', async (req, res) => {
     return res
       .status(500)
       .json({ success: false, message: 'Failed to undo move.' });
+  }
+});
+
+// PUT /practice/:id/notes — persist the user's pencil marks (81-cell array).
+Router.put('/:id/notes', async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Not authenticated.' });
+    }
+    const { notes } = req.body || {};
+    const game = await Game.findById(req.params.id);
+    if (!game || String(game.user) !== String(req.user._id)) {
+      return res.status(404).json({ success: false, message: 'Game not found.' });
+    }
+    if (
+      !Array.isArray(notes) ||
+      notes.length !== 81 ||
+      notes.some((set) => !Array.isArray(set))
+    ) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'Notes must be an 81-cell array.' });
+    }
+    game.notes = notes.map((set) => [...new Set(set)].filter((n) => n >= 1 && n <= 9));
+    await game.save();
+    return res.json({ success: true, notes: game.notes });
+  } catch (err) {
+    return res
+      .status(500)
+      .json({ success: false, message: 'Failed to save notes.' });
+  }
+});
+
+// POST /practice/:id/abandon — end the game early and record it as abandoned.
+Router.post('/:id/abandon', async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Not authenticated.' });
+    }
+    const game = await Game.findById(req.params.id);
+    if (!game || String(game.user) !== String(req.user._id)) {
+      return res.status(404).json({ success: false, message: 'Game not found.' });
+    }
+    if (game.status !== 'active') {
+      return res
+        .status(400)
+        .json({ success: false, message: 'Game is not active.' });
+    }
+
+    game.status = 'abandoned';
+    game.completedAt = new Date();
+    await game.save();
+
+    await recordGame({
+      userId: req.user._id,
+      mode: game.mode || 'Solo',
+      difficulty: game.difficulty,
+      result: 'Abandoned',
+      timeSec: game.timeElapsedSec,
+      movesCount: game.moves.length,
+      mistakes: game.mistakes,
+      score: game.score,
+      eloDelta: 0,
+      powerUpsUsed: game.powerUpsUsed,
+      gameId: game._id,
+    });
+
+    return res.json({ success: true, status: game.status });
+  } catch (err) {
+    return res
+      .status(500)
+      .json({ success: false, message: 'Failed to abandon game.' });
   }
 });
 

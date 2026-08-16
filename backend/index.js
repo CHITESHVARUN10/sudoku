@@ -3,10 +3,7 @@ const http = require('http');
 const app = express();
 const dotenv = require('dotenv');
 const cors = require('cors');
-const session = require('express-session');
-const connectMongo = require('connect-mongo');
-const MongoStore = connectMongo.MongoStore || connectMongo.default;
-const passport = require('passport');
+const { sessionMiddleware, passport } = require('./middleware/session');
 const connectDB = require('./db');
 const { attachSocket } = require('./services/socket');
 
@@ -15,25 +12,7 @@ dotenv.config();
 
 const PORT = process.env.PORT || 5000;
 
-const mongoStore = MongoStore.create({
-  mongoUrl: process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/sudoku-app',
-  touchAfter: 24 * 3600, // reduce writes (seconds)
-});
-
-app.use(
-  session({
-    secret: process.env.SECRET_KEY || 'your-secret-key',
-    resave: false,
-    saveUninitialized: false,
-    store: mongoStore, // persist sessions in MongoDB so logins survive restarts
-    cookie: {
-      // Secure cookies only over HTTPS; the .env sets NODE_ENV=production for
-      // local dev, so don't blindly force secure or local login breaks.
-      secure: process.env.COOKIE_SECURE === 'true',
-      maxAge: 24 * 60 * 60 * 1000, // 24 hours
-    },
-  })
-);
+app.use(sessionMiddleware);
 
 // Passport init + session (needed for req.user / login persistence)
 app.use(passport.initialize());

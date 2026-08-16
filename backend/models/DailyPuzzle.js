@@ -53,7 +53,6 @@ const dailyPuzzleSchema = new Schema(
   }
 );
 
-dailyPuzzleSchema.index({ date: 1 });
 dailyPuzzleSchema.index({ difficulty: 1, date: -1 });
 
 module.exports = mongoose.model('DailyPuzzle', dailyPuzzleSchema);

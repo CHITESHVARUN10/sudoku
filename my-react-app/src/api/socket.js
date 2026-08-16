@@ -25,6 +25,7 @@ export function createMatchSocket({
     socket = io(SOCKET_URL, {
       autoConnect: true,
       reconnectionAttempts: Infinity, // keep retrying; server is stateful
+      withCredentials: true, // send the session cookie (socket auth)
     });
 
     socket.on("connect", () => onConnect?.());
@@ -54,6 +55,9 @@ export function createMatchSocket({
     },
     sendPowerUp(matchId, userId, cell) {
       ensure().emit("match:powerup", { matchId, userId, cell });
+    },
+    sendNotes(matchId, userId, notes) {
+      ensure().emit("match:notes", { matchId, userId, notes });
     },
     resign(matchId, userId) {
       ensure().emit("match:resign", { matchId, userId });

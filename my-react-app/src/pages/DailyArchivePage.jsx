@@ -71,7 +71,8 @@ function DailyArchivePage() {
                 </div>
               </div>
               <Link
-                to="/practice"
+                to="/practice/board"
+                state={{ source: "daily", puzzleId: today._id }}
                 className="border border-ink-black px-4 py-2 font-label-mono text-label-mono uppercase tracking-wider hover:bg-ink-black hover:text-paper-white transition-colors"
               >
                 Play
@@ -108,8 +109,9 @@ function DailyArchivePage() {
             </div>
           )}
           {games.map((game, i) => (
-            <div
+            <Link
               key={game._id || i}
+              to={`/results/${game._id}`}
               className="group grid grid-cols-12 gap-4 py-6 border-b border-ink-black hover:bg-surface-container-low transition-colors duration-150 cursor-pointer items-center text-body-md"
             >
               <div className="col-span-2 font-label-mono text-label-mono text-ink-black">
@@ -126,15 +128,17 @@ function DailyArchivePage() {
               <div className="col-span-1 text-right font-label-mono text-label-mono">
                 {formatTime(game.timeSec)}
               </div>
-            </div>
+            </Link>
           ))}
 
-          {/* Empty State Demonstration */}
-          <div className="mt-24 text-center">
-            <p className="font-headline-sm text-headline-sm text-note-gray">
-              No games yet — start your first puzzle.
-            </p>
-          </div>
+          {/* Empty State — only when there are truly no games */}
+          {!loading && !games.length && (
+            <div className="mt-24 text-center">
+              <p className="font-headline-sm text-headline-sm text-note-gray">
+                No games yet — start your first puzzle.
+              </p>
+            </div>
+          )}
         </div>
       </main>
 

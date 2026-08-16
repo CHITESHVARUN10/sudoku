@@ -4,10 +4,12 @@ const LeaderboardEntry = require('../models/LeaderboardEntry');
 const { newRatings } = require('./elo');
 
 // Compute + update the user's Statistics doc after a game.
-async function recordGame({ userId, mode, difficulty, opponentId, opponentName, result, timeSec, movesCount, mistakes, score, eloDelta, powerUpsUsed }) {
+async function recordGame({ userId, mode, difficulty, opponentId, opponentName, result, timeSec, movesCount, mistakes, score, eloDelta, powerUpsUsed, gameId, matchId }) {
   // 1. GameHistory ledger entry
   await GameHistory.create({
     user: userId,
+    game: gameId || null,
+    match: matchId || null,
     mode,
     difficulty,
     opponent: opponentId || null,
@@ -72,33 +74,39 @@ async function recordGame({ userId, mode, difficulty, opponentId, opponentName, 
 
   await stats.save();
 
-  // 3. Leaderboard entry (all-time; keep winRate/games/streaks/elo fresh)
-  let entry = await LeaderboardEntry.findOne({ user: userId, period: 'all-time' });
-  if (!entry) {
-    entry = await LeaderboardEntry.create({
-      user: userId,
-      period: 'all-time',
-      rank: 9999, // recomputed below
-    });
-  }
-  entry.winRate = stats.winRate;
-  entry.gamesPlayed = stats.gamesPlayed;
-  entry.currentStreak = stats.currentStreak;
-  entry.bestStreak = stats.bestStreak;
-  if (user) entry.elo = user.elo;
-  await entry.save();
+  // 3. Leaderboard entries for all periods; keep winRate/games/streaks/elo fresh.
+  const PERIODS = ['all-time', 'week', 'month'];
+  for (const period of PERIODS) {
+    let entry = await LeaderboardEntry.findOne({ user: userId, period });
+    if (!entry) {
+      entry = await LeaderboardEntry.create({
+        user: userId,
+        period,
+        rank: 9999, // recomputed below
+      });
+    }
+    entry.winRate = stats.winRate;
+    entry.gamesPlayed = stats.gamesPlayed;
+    entry.currentStreak = stats.currentStreak;
+    entry.bestStreak = stats.bestStreak;
+    if (user) entry.elo = user.elo;
+    await entry.save();
 
-  // Recompute all-time ranks (by elo desc, then winRate).
-  const all = await LeaderboardEntry.find({ period: 'all-time' }).sort({ elo: -1, winRate: -1 });
-  await Promise.all(
-    all.map((e, i) => {
-      if (e.rank !== i + 1) {
-        e.rank = i + 1;
-        return e.save();
-      }
-      return null;
-    })
-  );
+    // Recompute ranks for this period (by elo desc, then winRate).
+    const all = await LeaderboardEntry.find({ period }).sort({
+      elo: -1,
+      winRate: -1,
+    });
+    await Promise.all(
+      all.map((e, i) => {
+        if (e.rank !== i + 1) {
+          e.rank = i + 1;
+          return e.save();
+        }
+        return null;
+      })
+    );
+  }
 
   return stats;
 }
@@ -112,6 +120,16 @@ async function recordMatchResult(match, { winnerUserId, loserUserId, winnerElo, 
   const winnerScore = winnerIsP1 ? match.scores?.p1 ?? 0 : match.scores?.p2 ?? 0;
   const loserScore = winnerIsP1 ? match.scores?.p2 ?? 0 : match.scores?.p1 ?? 0;
 
+  // Per-seat mistake counts.
+  const winnerMistakes = winnerIsP1 ? match.mistakes?.p1 ?? 0 : match.mistakes?.p2 ?? 0;
+  const loserMistakes = winnerIsP1 ? match.mistakes?.p2 ?? 0 : match.mistakes?.p1 ?? 0;
+
+  // Real opponent names for history rows.
+  const [winnerUser, loserUser] = await Promise.all([
+    require('../models/User').findById(winnerUserId).select('name'),
+    require('../models/User').findById(loserUserId).select('name'),
+  ]);
+
   // Winner
   results.push(
     await recordGame({
@@ -119,14 +137,15 @@ async function recordMatchResult(match, { winnerUserId, loserUserId, winnerElo, 
       mode: 'Multiplayer',
       difficulty,
       opponentId: loserUserId,
-      opponentName: null,
+      opponentName: loserUser?.name || null,
       result: 'Win',
       timeSec,
       movesCount,
-      mistakes: 0,
+      mistakes: winnerMistakes,
       score: winnerScore,
       eloDelta,
       powerUpsUsed: 0,
+      matchId: match._id,
     })
   );
 
@@ -137,14 +156,15 @@ async function recordMatchResult(match, { winnerUserId, loserUserId, winnerElo, 
       mode: 'Multiplayer',
       difficulty,
       opponentId: winnerUserId,
-      opponentName: null,
+      opponentName: winnerUser?.name || null,
       result: 'Loss',
       timeSec,
       movesCount,
-      mistakes: 0,
+      mistakes: loserMistakes,
       score: loserScore,
       eloDelta: -eloDelta,
       powerUpsUsed: 0,
+      matchId: match._id,
     })
   );
 

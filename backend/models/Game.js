@@ -66,6 +66,18 @@ const gameSchema = new Schema(
       required: true,
       index: true,
     },
+    // Game mode: Solo practice, Daily puzzle, or an archived replay.
+    mode: {
+      type: String,
+      enum: ['Solo', 'Daily', 'Archive'],
+      default: 'Solo',
+    },
+    // Set when this Game was created from a daily puzzle.
+    dailyPuzzleId: {
+      type: Schema.Types.ObjectId,
+      ref: 'DailyPuzzle',
+      default: null,
+    },
     difficulty: {
       type: String,
       enum: ['Easy', 'Medium', 'Hard', 'Expert'],

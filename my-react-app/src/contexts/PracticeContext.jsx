@@ -110,6 +110,17 @@ export function PracticeProvider({ children }) {
     return res;
   }, []);
 
+  const abandonGame = useCallback(async (gameId) => {
+    const res = await apiClient.post(`/practice/${gameId}/abandon`);
+    setGame((g) => (g ? { ...g, status: "abandoned" } : g));
+    return res;
+  }, []);
+
+  const saveNotes = useCallback(async (gameId, notes) => {
+    const res = await apiClient.put(`/practice/${gameId}/notes`, { notes });
+    return res;
+  }, []);
+
   const clearGame = useCallback(() => setGame(null), []);
 
   return (
@@ -125,6 +136,8 @@ export function PracticeProvider({ children }) {
         makeMove,
         requestHint,
         undoGame,
+        abandonGame,
+        saveNotes,
         clearGame,
       }}
     >

@@ -273,15 +273,17 @@ body {
 .sudoku-cell.fixed {
   color: #1a1a1a;
   font-weight: 700;
+  cursor: default;
 }
 
 .sudoku-cell.user-input {
   color: #2b3a55;
 }
 
-/* Move feedback tints: blue = correct, red = wrong */
+/* Move feedback tints — match the multiplayer palette (blue = correct, red = wrong) */
 .sudoku-cell.correct {
   background-color: rgba(43, 58, 85, 0.18);
+  color: #2b3a55;
 }
 
 .sudoku-cell.correct.selected {
@@ -290,6 +292,7 @@ body {
 
 .sudoku-cell.wrong {
   background-color: rgba(196, 63, 63, 0.18);
+  color: #c43f3f;
 }
 
 .sudoku-cell.wrong.selected {
@@ -381,6 +384,14 @@ body {
 .mp-sudoku-cell.wrong {
   background-color: rgba(196, 63, 63, 0.18);
   color: #c43f3f;
+}
+
+/* Opponent's correct fill: shown as a neutral '?' marker — no value, no
+   right/wrong hint (hidden-move multiplayer). */
+.mp-sudoku-cell.opponent {
+  color: #7a7875;
+  font-weight: 400;
+  font-size: 20px;
 }
 
 .mp-sudoku-cell.locked.selected {

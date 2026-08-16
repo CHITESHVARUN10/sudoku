@@ -2,6 +2,7 @@ const { Server } = require('socket.io');
 const Room = require('../models/Room');
 const Match = require('../models/Match');
 const User = require('../models/User');
+const { sessionMiddleware } = require('../middleware/session');
 const { generatePuzzle } = require('./sudokuGenerator');
 const { applyMove } = require('./scoring');
 const { usePowerUp } = require('./powerUps');
@@ -18,6 +19,12 @@ const matchQueues = new Map();
 
 // Per-room serialization queue so startMatch runs exactly once per room.
 const roomQueues = new Map();
+
+// Every socket handler resolves the real user from the session cookie; the
+// userId passed in the payload is only accepted if it matches.
+function socketUserId(socket) {
+  return socket.request?.session?.passport?.user || null;
+}
 
 function enqueueOp(queueMap, key, fn) {
   const prev = queueMap.get(key) || Promise.resolve();
@@ -55,12 +62,66 @@ function buildCellStatus(match) {
   });
 }
 
-// A cell cannot be overwritten once it holds the correct value.
-function isLockedCell(match, cell) {
-  if (match.initialBoard[cell] != null) return true;
-  return match.moveHistory.some(
-    (m) => m.cell === cell && (m.correct === true || m.isPowerUp)
-  );
+// Per-viewer masked board + status. Hidden-move game: the opponent must NOT
+// see what number you placed or whether it was right/wrong — only WHICH cells
+// have been marked (a neutral '?' for your correct fills; wrong fills show as
+// empty). Clues and the viewer's own fills stay visible.
+// Returns { board, cellStatus }.
+function buildViewerState(match, viewerSeat) {
+  const maskedBoard = [];
+  const maskedStatus = [];
+  for (let i = 0; i < 81; i++) {
+    const v = match.board[i];
+    if (v == null) {
+      maskedBoard.push(null);
+      maskedStatus.push(null);
+      continue;
+    }
+    // Clues are shared.
+    if (match.initialBoard[i] != null) {
+      maskedBoard.push(v);
+      maskedStatus.push('given');
+      continue;
+    }
+    // Which seat placed the value currently in this cell?
+    let placedBy = null;
+    for (let h = match.moveHistory.length - 1; h >= 0; h--) {
+      const m = match.moveHistory[h];
+      if (m.cell === i && m.value != null && !m.isNote) {
+        placedBy = m.player;
+        break;
+      }
+    }
+    const isMine = placedBy === viewerSeat;
+    if (isMine) {
+      maskedBoard.push(v);
+      maskedStatus.push(v === match.solution[i] ? 'locked' : 'wrong');
+    } else if (v === match.solution[i]) {
+      // Opponent's correct fill: neutral marker, no value.
+      maskedBoard.push('?');
+      maskedStatus.push('opponent');
+    } else {
+      // Opponent's wrong fill: hidden entirely.
+      maskedBoard.push(null);
+      maskedStatus.push(null);
+    }
+  }
+  return { board: maskedBoard, cellStatus: maskedStatus };
+}
+
+// Which seat's CURRENT mark owns a cell? Returns 1, 2, or null.
+// Clues belong to no one (locked for both). moveHistory is append-only, so the
+// LAST real mark (fill or power-up) for a cell is its current owner. A player
+// may override the opponent's mark but can never change their own.
+function cellOwner(match, cell) {
+  if (match.initialBoard[cell] != null) return null; // clue — locked for all
+  for (let h = match.moveHistory.length - 1; h >= 0; h--) {
+    const m = match.moveHistory[h];
+    if (m.cell === cell && !m.isNote) {
+      return m.player;
+    }
+  }
+  return null;
 }
 
 function isBoardSolved(match) {
@@ -75,13 +136,16 @@ async function fetchMatchPlayers(match) {
   return [p1, p2];
 }
 
-// Full state payload shared by match:start / match:state (rejoin) emits.
-function buildStatePayload(match, players) {
+// Full state payload for ONE viewer (seat 1 or 2). Used by match:start /
+// match:state (rejoin). The board/status/moveHistory are masked per viewer so
+// the opponent's values and correctness never leave the server.
+function buildStatePayload(match, players, viewerSeat) {
+  const { board, cellStatus } = buildViewerState(match, viewerSeat);
   return {
     matchId: match._id,
-    board: match.board,
+    board,
     initialBoard: match.initialBoard,
-    cellStatus: buildCellStatus(match),
+    cellStatus,
     difficulty: match.difficulty,
     clueCount: match.clueCount,
     players: players.map((p) =>
@@ -89,8 +153,16 @@ function buildStatePayload(match, players) {
     ),
     turn: match.turn,
     turnNumber: match.turnNumber,
-    moveHistory: match.moveHistory,
+    // Opponent's entries: keep only WHICH cell was marked — never the value
+    // or whether it was right/wrong.
+    moveHistory: match.moveHistory.map((m) =>
+      m.player === viewerSeat
+        ? m
+        : { player: m.player, cell: m.cell, timestamp: m.timestamp }
+    ),
     scores: match.scores,
+    mistakes: match.mistakes,
+    notes: match.notes,
     powerUpsLeft: match.powerUpsLeft,
     powerUpsMax: match.powerUpsMax,
     clocks: match.clocks,
@@ -98,77 +170,140 @@ function buildStatePayload(match, players) {
   };
 }
 
-function attachSocket(server) {
-  const io = new Server(server, {
-    cors: { origin: '*', methods: ['GET', 'POST'] },
+// Server-authoritative clocks: decrement both players' clocks by the real
+// elapsed time since lastMoveAt. A seat whose disconnectedAt is set is paused.
+// Returns true if the match ended via timeout.
+async function tickClocks(io, match) {
+  if (match.timerMinPerPlayer <= 0) return false;
+  const now = new Date();
+  const last = match.lastMoveAt || match.startedAt || now;
+  const elapsed = Math.max(0, (now - new Date(last)) / 1000);
+
+  if (elapsed > 0) {
+    match.clocks = {
+      p1: match.disconnectedAt?.p1
+        ? match.clocks.p1
+        : Math.max(0, (match.clocks.p1 || 0) - elapsed),
+      p2: match.disconnectedAt?.p2
+        ? match.clocks.p2
+        : Math.max(0, (match.clocks.p2 || 0) - elapsed),
+    };
+  }
+  match.lastMoveAt = now;
+
+  if (match.clocks.p1 <= 0) {
+    await endMatch(io, match, 2, 'timeout');
+    return true;
+  }
+  if (match.clocks.p2 <= 0) {
+    await endMatch(io, match, 1, 'timeout');
+    return true;
+  }
+  return false;
+}
+
+// Broadcast the live match state to both players — each gets a per-viewer
+// masked payload so opponent values/correctness never leave the server.
+async function emitMatchState(io, match) {
+  const players = await fetchMatchPlayers(match);
+  const common = {
+    matchId: match._id,
+    turn: match.turn,
+    turnNumber: match.turnNumber,
+    scores: match.scores,
+    mistakes: match.mistakes,
+    notes: match.notes,
+    powerUpsLeft: match.powerUpsLeft,
+    clocks: match.clocks,
+    status: match.status,
+  };
+  for (const seat of [1, 2]) {
+    const { board, cellStatus } = buildViewerState(match, seat);
+    const uid = seat === 1 ? match.player1 : match.player2;
+    const viewerPlayers = seat === 1 ? players : [players[1], players[0]];
+    io.to(`user:${uid}`).emit('match:state', {
+      ...common,
+      board,
+      cellStatus,
+      players: viewerPlayers.map((p) =>
+        p ? { _id: p._id, name: p.name, elo: p.elo } : null
+      ),
+      moveHistory: match.moveHistory.map((m) =>
+        m.player === seat
+          ? m
+          : { player: m.player, cell: m.cell, timestamp: m.timestamp }
+      ),
+    });
+  }
+}
+
+// End the match: set status, winner, elo deltas, notify players.
+async function endMatch(io, match, winnerPlayer, reason) {
+  if (match.status !== 'active') return;
+
+  match.status = 'completed';
+  match.completedAt = new Date();
+  match.winner = winnerPlayer === 1 ? match.player1 : match.player2;
+
+  // ELO only counts for completed matches with a winner.
+  if (winnerPlayer) {
+    const [p1, p2] = await Promise.all([
+      User.findById(match.player1),
+      User.findById(match.player2),
+    ]);
+    if (p1 && p2) {
+      const { delta } = newRatings(p1.elo, p2.elo);
+      match.eloDelta = delta;
+      p1.elo = winnerPlayer === 1 ? p1.elo + delta : p1.elo - delta;
+      p2.elo = winnerPlayer === 2 ? p2.elo + delta : p2.elo - delta;
+      await Promise.all([p1.save(), p2.save()]);
+    }
+  }
+
+  await match.save();
+
+  // Record history + stats + leaderboard for both players.
+  try {
+    const winnerUserId = winnerPlayer === 1 ? match.player1 : match.player2;
+    const loserUserId = winnerPlayer === 2 ? match.player1 : match.player2;
+    const timeSec = match.startedAt
+      ? Math.max(0, Math.round((new Date() - new Date(match.startedAt)) / 1000))
+      : 0;
+    await recordMatchResult(match, {
+      winnerUserId,
+      loserUserId,
+      eloDelta: match.eloDelta,
+      timeSec,
+      movesCount: match.moveHistory.length,
+      difficulty: match.difficulty,
+    });
+  } catch (err) {
+    console.error('recordMatchResult error:', err);
+  }
+
+  io.to(`match:${match._id}`).emit('match:end', {
+    winner: winnerPlayer,
+    reason,
+    scores: match.scores,
+    mistakes: match.mistakes,
+    eloDelta: match.eloDelta,
   });
 
-  // Broadcast the live match state to both players.
-  function emitMatchState(match) {
-    io.to(`match:${match._id}`).emit('match:state', {
-      matchId: match._id,
-      board: match.board,
-      cellStatus: buildCellStatus(match),
-      turn: match.turn,
-      turnNumber: match.turnNumber,
-      moveHistory: match.moveHistory,
-      scores: match.scores,
-      powerUpsLeft: match.powerUpsLeft,
-      clocks: match.clocks,
-      status: match.status,
-    });
-  }
+  await Room.updateOne({ _id: match.room }, { status: 'started' });
+}
 
-  // End the match: set status, winner, elo deltas, notify players.
-  async function endMatch(match, winnerPlayer, reason) {
-    if (match.status !== 'active') return;
+function attachSocket(server) {
+  const io = new Server(server, {
+    cors: {
+      origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+      methods: ['GET', 'POST'],
+      credentials: true,
+    },
+  });
 
-    match.status = 'completed';
-    match.completedAt = new Date();
-    match.winner = winnerPlayer === 1 ? match.player1 : match.player2;
-
-    // ELO only counts for completed matches with a winner.
-    if (winnerPlayer) {
-      const [p1, p2] = await Promise.all([
-        User.findById(match.player1),
-        User.findById(match.player2),
-      ]);
-      if (p1 && p2) {
-        const { delta } = newRatings(p1.elo, p2.elo);
-        match.eloDelta = delta;
-        p1.elo = winnerPlayer === 1 ? p1.elo + delta : p1.elo - delta;
-        p2.elo = winnerPlayer === 2 ? p2.elo + delta : p2.elo - delta;
-        await Promise.all([p1.save(), p2.save()]);
-      }
-    }
-
-    await match.save();
-
-    // Record history + stats + leaderboard for both players.
-    try {
-      const winnerUserId = winnerPlayer === 1 ? match.player1 : match.player2;
-      const loserUserId = winnerPlayer === 2 ? match.player1 : match.player2;
-      await recordMatchResult(match, {
-        winnerUserId,
-        loserUserId,
-        eloDelta: match.eloDelta,
-        timeSec: 0,
-        movesCount: match.moveHistory.length,
-        difficulty: match.difficulty,
-      });
-    } catch (err) {
-      console.error('recordMatchResult error:', err);
-    }
-
-    io.to(`match:${match._id}`).emit('match:end', {
-      winner: winnerPlayer,
-      reason,
-      scores: match.scores,
-      eloDelta: match.eloDelta,
-    });
-
-    await Room.updateOne({ _id: match.room }, { status: 'started' });
-  }
+  // Share the express session middleware so socket handlers can read the
+  // authenticated user from the session cookie.
+  io.engine.use(sessionMiddleware);
 
   // Create the Match when both players are in a full room, and start it.
   // Serialized per room so concurrent room:join events can't double-start.
@@ -215,6 +350,9 @@ function attachSocket(server) {
 
       room.match = match._id;
       room.status = 'started';
+      // A started room must NOT be TTL-deleted while the match is live —
+      // players rejoin via the room code after a refresh. Clear the expiry.
+      room.expiresAt = null;
       await room.save();
 
       const players = await fetchMatchPlayers(match);
@@ -227,10 +365,15 @@ function attachSocket(server) {
         s.matchId = match._id;
       }
 
-      io.to(`match:${match._id}`).emit('match:start', {
-        ...buildStatePayload(match, players),
-        timerMin: match.timerMinPerPlayer,
-      });
+      // Send each player their own masked start payload (hidden-move game).
+      for (const seat of [1, 2]) {
+        const uid = seat === 1 ? match.player1 : match.player2;
+        const seatPlayers = seat === 1 ? players : [players[1], players[0]];
+        io.to(`user:${uid}`).emit('match:start', {
+          ...buildStatePayload(match, seatPlayers, seat),
+          timerMin: match.timerMinPerPlayer,
+        });
+      }
 
       return match;
     });
@@ -240,12 +383,37 @@ function attachSocket(server) {
     // Attach socket to a room; if both players are present, start the match.
     socket.on('room:join', async ({ roomCode, userId }) => {
       try {
+        const authedId = socketUserId(socket);
+        if (!authedId || String(authedId) !== String(userId)) {
+          socket.emit('error', { message: 'Not authenticated.' });
+          return;
+        }
         if (!roomCode || !userId) {
           socket.emit('error', { message: 'Missing room code or user id.' });
           return;
         }
         const room = await Room.findOne({ code: roomCode });
+        // Room may be TTL-deleted even though a match is live; fall back to
+        // the user's active match so refresh/rejoin still works.
         if (!room || room.status === 'cancelled') {
+          const activeMatch = await Match.findOne({
+            $or: [{ player1: authedId }, { player2: authedId }],
+            status: 'active',
+          }).sort({ createdAt: -1 });
+          if (activeMatch) {
+            socket.join(`match:${activeMatch._id}`);
+            socket.join(`user:${userId}`);
+            socket.userId = userId;
+            socket.matchId = activeMatch._id;
+            const players = await fetchMatchPlayers(activeMatch);
+            const seat =
+              String(activeMatch.player1) === String(authedId) ? 1 : 2;
+            socket.emit(
+              'match:state',
+              buildStatePayload(activeMatch, players, seat)
+            );
+            return;
+          }
           socket.emit('error', { message: 'Room not available.' });
           return;
         }
@@ -283,7 +451,12 @@ function attachSocket(server) {
               match.disconnectedAt.p2 = null;
             await match.save();
             const players = await fetchMatchPlayers(match);
-            socket.emit('match:state', buildStatePayload(match, players));
+            const seat =
+              String(match.player1) === String(userId) ? 1 : 2;
+            socket.emit(
+              'match:state',
+              buildStatePayload(match, players, seat)
+            );
             io.to(`match:${match._id}`).emit('opponent:reconnected', {
               player: String(match.player1) === String(userId) ? 1 : 2,
             });
@@ -308,6 +481,11 @@ function attachSocket(server) {
     // Reconnect to an in-progress match and resync full state.
     socket.on('match:rejoin', async ({ matchId, userId }) => {
       try {
+        const authedId = socketUserId(socket);
+        if (!authedId || String(authedId) !== String(userId)) {
+          socket.emit('error', { message: 'Not authenticated.' });
+          return;
+        }
         if (!matchId || !userId) {
           socket.emit('error', { message: 'Missing match or user id.' });
           return;
@@ -340,7 +518,7 @@ function attachSocket(server) {
         }
 
         const players = await fetchMatchPlayers(match);
-        socket.emit('match:state', buildStatePayload(match, players));
+        socket.emit('match:state', buildStatePayload(match, players, player));
         io.to(`match:${matchId}`).emit('opponent:reconnected', { player });
       } catch (err) {
         console.error('match:rejoin error:', err);
@@ -354,9 +532,20 @@ function attachSocket(server) {
     socket.on('match:move', ({ matchId, userId, cell, value }) => {
       enqueueMatchOp(matchId, async () => {
         try {
+          const authedId = socketUserId(socket);
+          if (!authedId || String(authedId) !== String(userId)) {
+            socket.emit('error', { message: 'Not authenticated.' });
+            return;
+          }
           const match = await Match.findById(matchId);
-          if (!match || match.status !== 'active') return;
-          if (cell < 0 || cell > 80 || value < 1 || value > 9) return;
+          if (!match || match.status !== 'active') {
+            socket.emit('error', { message: 'Match is not active.' });
+            return;
+          }
+          if (cell < 0 || cell > 80 || value < 1 || value > 9) {
+            socket.emit('error', { message: 'Invalid move.' });
+            return;
+          }
 
           const player =
             String(match.player1) === String(userId)
@@ -364,8 +553,24 @@ function attachSocket(server) {
               : String(match.player2) === String(userId)
               ? 2
               : 0;
-          if (!player) return;
-          if (isLockedCell(match, cell)) return; // given or already solved
+          if (!player) {
+            socket.emit('error', { message: 'Not a player in this match.' });
+            return;
+          }
+          const owner = cellOwner(match, cell);
+          // Clues are unowned but still un-overridable.
+          if (match.initialBoard[cell] != null) {
+            socket.emit('error', { message: 'Cell is a clue.' });
+            return;
+          }
+          if (owner === player) {
+            socket.emit('error', {
+              message: 'You already marked that cell.',
+            });
+            return;
+          }
+
+          if (await tickClocks(io, match)) return; // match ended via timeout
 
           const correct = value === match.solution[cell];
           const { board, delta } = applyMove({
@@ -377,7 +582,8 @@ function attachSocket(server) {
 
           match.board = board;
           const scoreKey = player === 1 ? 'p1' : 'p2';
-          match.scores[scoreKey] += delta;
+          match.scores[scoreKey] = Math.max(0, match.scores[scoreKey] + delta);
+          if (!correct) match.mistakes[scoreKey] += 1;
           match.moveHistory.push({
             player,
             cell,
@@ -391,10 +597,10 @@ function attachSocket(server) {
           await match.save();
 
           if (isBoardSolved(match)) {
-            await endMatch(match, player, 'solved');
+            await endMatch(io, match, player, 'solved');
             return;
           }
-          emitMatchState(match);
+          emitMatchState(io, match);
         } catch (err) {
           console.error('match:move error:', err);
         }
@@ -406,15 +612,43 @@ function attachSocket(server) {
     socket.on('match:powerup', ({ matchId, userId, cell }) => {
       enqueueMatchOp(matchId, async () => {
         try {
+          const authedId = socketUserId(socket);
+          if (!authedId || String(authedId) !== String(userId)) {
+            socket.emit('error', { message: 'Not authenticated.' });
+            return;
+          }
           const match = await Match.findById(matchId);
-          if (!match || match.status !== 'active') return;
+          if (!match || match.status !== 'active') {
+            socket.emit('error', { message: 'Match is not active.' });
+            return;
+          }
           const player =
             String(match.player1) === String(userId)
               ? 1
               : String(match.player2) === String(userId)
               ? 2
               : 0;
-          if (!player) return;
+          if (!player) {
+            socket.emit('error', { message: 'Not a player in this match.' });
+            return;
+          }
+
+          if (await tickClocks(io, match)) return; // match ended via timeout
+
+          // Power-ups obey the same ownership rule as moves: usable on any
+          // non-clue cell not already marked by THIS player — including cells
+          // the opponent secretly filled wrong (they look empty to us).
+          const owner = cellOwner(match, cell);
+          if (match.initialBoard[cell] != null) {
+            socket.emit('error', { message: 'Cell is a clue.' });
+            return;
+          }
+          if (owner === player) {
+            socket.emit('error', {
+              message: 'You already marked that cell.',
+            });
+            return;
+          }
 
           const res = usePowerUp(match, player, cell);
           if (!res.ok) {
@@ -435,18 +669,59 @@ function attachSocket(server) {
           await match.save();
 
           if (isBoardSolved(match)) {
-            await endMatch(match, player, 'solved');
+            await endMatch(io, match, player, 'solved');
             return;
           }
-          emitMatchState(match);
+          emitMatchState(io, match);
         } catch (err) {
           console.error('match:powerup error:', err);
         }
       });
     });
 
+    // Persist a player's pencil marks (81-cell array of note sets).
+    socket.on('match:notes', async ({ matchId, userId, notes }) => {
+      try {
+        const authedId = socketUserId(socket);
+        if (!authedId || String(authedId) !== String(userId)) {
+          socket.emit('error', { message: 'Not authenticated.' });
+          return;
+        }
+        const match = await Match.findById(matchId);
+        if (!match || match.status !== 'active') return;
+        const player =
+          String(match.player1) === String(userId)
+            ? 1
+            : String(match.player2) === String(userId)
+            ? 2
+            : 0;
+        if (!player) return;
+        if (
+          !Array.isArray(notes) ||
+          notes.length !== 81 ||
+          notes.some((set) => !Array.isArray(set))
+        ) {
+          socket.emit('error', { message: 'Notes must be an 81-cell array.' });
+          return;
+        }
+        const key = player === 1 ? 'p1' : 'p2';
+        match.notes[key] = notes.map((set) =>
+          [...new Set(set)].filter((n) => n >= 1 && n <= 9)
+        );
+        await match.save();
+        emitMatchState(io, match);
+      } catch (err) {
+        console.error('match:notes error:', err);
+      }
+    });
+
     socket.on('match:resign', async ({ matchId, userId }) => {
       try {
+        const authedId = socketUserId(socket);
+        if (!authedId || String(authedId) !== String(userId)) {
+          socket.emit('error', { message: 'Not authenticated.' });
+          return;
+        }
         const match = await Match.findById(matchId);
         if (!match || match.status !== 'active') return;
         const player =
@@ -457,7 +732,7 @@ function attachSocket(server) {
             : 0;
         if (!player) return;
         const winner = player === 1 ? 2 : 1;
-        await endMatch(match, winner, 'resign');
+        await endMatch(io, match, winner, 'resign');
       } catch (err) {
         console.error('match:resign error:', err);
       }
@@ -479,6 +754,8 @@ function attachSocket(server) {
               if (set.size === 0) roomPresence.delete(code);
             }
           }
+        } else {
+          return; // another tab/socket is still connected
         }
 
         const matchId = socket.matchId;
@@ -504,6 +781,32 @@ function attachSocket(server) {
       }
     });
   });
+
+  // Sweep active timed matches so clocks tick (and timeouts fire) even when
+  // neither player makes a move.
+  setInterval(async () => {
+    try {
+      const matches = await Match.find({
+        status: 'active',
+        timerMinPerPlayer: { $gt: 0 },
+      });
+      for (const match of matches) {
+        await enqueueMatchOp(match._id, async () => {
+          const fresh = await Match.findById(match._id);
+          if (!fresh || fresh.status !== 'active') return;
+          const before = { ...fresh.clocks };
+          const ended = await tickClocks(io, fresh);
+          if (ended) return;
+          if (fresh.clocks.p1 !== before.p1 || fresh.clocks.p2 !== before.p2) {
+            await fresh.save();
+            emitMatchState(io, fresh);
+          }
+        });
+      }
+    } catch (err) {
+      console.error('clock sweep error:', err);
+    }
+  }, 5000);
 
   return io;
 }
