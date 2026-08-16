@@ -331,7 +331,10 @@ function MultiplayerGameBoardPage() {
 
         {/* Connection banners */}
         {noMatch && (
-          <div className="mb-4 border-2 border-ink-black bg-surface-variant p-3 font-label-mono text-label-mono uppercase tracking-widest text-ink-black">
+          <div
+            className="mb-4 border-2 border-ink-black bg-surface-variant p-3 font-label-mono text-label-mono uppercase tracking-widest text-ink-black"
+            role="status"
+          >
             No active match —{" "}
             <Link to="/multiplayer" className="underline">
               join or create one
@@ -340,27 +343,42 @@ function MultiplayerGameBoardPage() {
           </div>
         )}
         {!socketConnected && !noMatch && (
-          <div className="mb-4 border-2 border-ink-black bg-surface-variant p-3 font-label-mono text-label-mono uppercase tracking-widest text-ink-black">
+          <div
+            className="mb-4 border-2 border-ink-black bg-surface-variant p-3 font-label-mono text-label-mono uppercase tracking-widest text-ink-black"
+            role="status"
+          >
             Disconnected — reconnecting…
           </div>
         )}
         {socketConnected && !match?.board && !noMatch && (
-          <div className="mb-4 border-2 border-ink-black bg-surface-variant p-3 font-label-mono text-label-mono uppercase tracking-widest text-ink-black">
+          <div
+            className="mb-4 border-2 border-ink-black bg-surface-variant p-3 font-label-mono text-label-mono uppercase tracking-widest text-ink-black"
+            role="status"
+          >
             Waiting for opponent…
           </div>
         )}
         {(syncError || lastError) && (
-          <div className="mb-4 border-2 border-ink-black bg-surface-variant p-3 font-label-mono text-label-mono uppercase tracking-widest text-error-red">
+          <div
+            className="mb-4 border-2 border-ink-black bg-surface-variant p-3 font-label-mono text-label-mono uppercase tracking-widest text-error-red"
+            role="alert"
+          >
             {syncError || lastError}
           </div>
         )}
         {oppDisconnected && match?.status === "active" && (
-          <div className="mb-4 border-2 border-ink-black bg-surface-variant p-3 font-label-mono text-label-mono uppercase tracking-widest text-secondary">
+          <div
+            className="mb-4 border-2 border-ink-black bg-surface-variant p-3 font-label-mono text-label-mono uppercase tracking-widest text-secondary"
+            role="status"
+          >
             Opponent disconnected — their clock is paused.
           </div>
         )}
         {result && (
-          <div className="mb-4 border-2 border-ink-black bg-ink-black text-paper-white p-4 font-label-mono text-label-mono uppercase tracking-widest">
+          <div
+            className="mb-4 border-2 border-ink-black bg-ink-black text-paper-white p-4 font-label-mono text-label-mono uppercase tracking-widest"
+            role="status"
+          >
             {result.winner === myIndex + 1 ? "You win" : "You lose"} —{" "}
             {result.reason}
             {result.eloDelta
@@ -380,7 +398,11 @@ function MultiplayerGameBoardPage() {
         {/* Game Area Layout */}
         <div className="flex flex-col lg:flex-row gap-margin-lg items-start justify-center">
           {/* The Board */}
-          <div className="mp-sudoku-grid mx-auto lg:mx-0">
+          <div
+            className="mp-sudoku-grid mx-auto lg:mx-0"
+            role="grid"
+            aria-label="Sudoku board"
+          >
             {Array.from({ length: 81 }, (_, index) => {
               const value = grid[index];
               const status = cellStatus[index];

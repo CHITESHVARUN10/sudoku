@@ -47,15 +47,15 @@ function DailyArchivePage() {
           <h1 className="font-headline-md text-headline-md font-bold uppercase tracking-[0.1em] text-ink-black pb-4 border-b border-ink-black mb-4">
             GAME ARCHIVE
           </h1>
-          {/* Filter Row */}
+          {/* Filter Row (static — the ledger below lists every game) */}
           <div className="flex items-center font-label-mono text-label-mono text-note-gray uppercase">
-            <button className="text-ink-black underline underline-offset-4 decoration-[1px] hover:text-ink-black pr-6">
+            <span className="text-ink-black underline underline-offset-4 decoration-[1px] pr-6">
               All
-            </button>
+            </span>
             <div className="w-px h-4 bg-ink-black mx-2"></div>
-            <button className="hover:text-ink-black px-6">Multiplayer</button>
+            <span className="hover:text-ink-black px-6">Multiplayer</span>
             <div className="w-px h-4 bg-ink-black mx-2"></div>
-            <button className="hover:text-ink-black pl-6">Solo</button>
+            <span className="hover:text-ink-black pl-6">Solo</span>
           </div>
         </div>
 
@@ -168,8 +168,8 @@ function DailyArchivePage() {
             <Link to="/about" className="text-note-gray hover:text-ink-black transition-colors duration-150">
               Terms of Service
             </Link>
-            <Link to="/about" className="text-note-gray hover:text-ink-black transition-colors duration-150">
-              Accessibility
+            <Link to="/how-to-play" className="text-note-gray hover:text-ink-black transition-colors duration-150">
+              How to Play
             </Link>
           </div>
         </div>

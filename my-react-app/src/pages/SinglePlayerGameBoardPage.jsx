@@ -339,7 +339,10 @@ function SinglePlayerGameBoardPage() {
             </div>
 
             {solved && (
-              <div className="mb-4 border-2 border-ink-black bg-ink-black text-paper-white p-4 font-label-mono text-label-mono uppercase tracking-widest">
+              <div
+                className="mb-4 border-2 border-ink-black bg-ink-black text-paper-white p-4 font-label-mono text-label-mono uppercase tracking-widest"
+                role="status"
+              >
                 Solved! Score {score} · {formatTime(elapsed)} · {mistakes}{" "}
                 mistakes
                 <button
@@ -352,13 +355,20 @@ function SinglePlayerGameBoardPage() {
             )}
 
             {moveError && (
-              <div className="mb-4 border border-error-red bg-error-red/10 px-3 py-2 font-body-md text-body-md text-error-red">
+              <div
+                className="mb-4 border border-error-red bg-error-red/10 px-3 py-2 font-body-md text-body-md text-error-red"
+                role="alert"
+              >
                 {moveError}
               </div>
             )}
 
             {/* Sudoku Grid */}
-            <div className="sudoku-grid aspect-square w-full font-grid-number text-grid-number mb-margin-md">
+            <div
+              className="sudoku-grid aspect-square w-full font-grid-number text-grid-number mb-margin-md"
+              role="grid"
+              aria-label="Sudoku board"
+            >
               {board.map((value, index) => {
                 const notesSet = notes[index] || [];
                 const isSel = selected === index;
@@ -374,6 +384,10 @@ function SinglePlayerGameBoardPage() {
                     key={index}
                     className={cls}
                     onClick={() => handleCellClick(index)}
+                    role="gridcell"
+                    aria-label={`Row ${Math.floor(index / 9) + 1} column ${
+                      (index % 9) + 1
+                    }${value != null ? `, ${value}` : ", empty"}`}
                   >
                     {value != null ? (
                       <motion.span
@@ -400,33 +414,39 @@ function SinglePlayerGameBoardPage() {
             {/* Action Links */}
             <div className="flex flex-row lg:flex-col justify-around lg:justify-start gap-4">
               <button
-                className="font-body-lg text-body-lg text-ink-black hover:border-b hover:border-ink-black pb-0.5 self-start transition-all"
+                className="font-body-lg text-body-lg text-ink-black hover:border-b hover:border-ink-black pb-0.5 self-start transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-transparent"
                 onClick={handleUndo}
+                disabled={solved || !board.some((v, i) => v != null && !isFixed(i))}
               >
                 Undo
               </button>
               <button
-                className="font-body-lg text-body-lg text-ink-black hover:border-b hover:border-ink-black pb-0.5 self-start transition-all"
+                className="font-body-lg text-body-lg text-ink-black hover:border-b hover:border-ink-black pb-0.5 self-start transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-transparent"
                 onClick={handleHint}
                 disabled={solved || powerUpsLeft <= 0}
               >
                 Hint ({powerUpsLeft})
               </button>
               <button
-                className="font-body-lg text-body-lg text-ink-black hover:border-b hover:border-ink-black pb-0.5 self-start transition-all"
+                className="font-body-lg text-body-lg text-ink-black hover:border-b hover:border-ink-black pb-0.5 self-start transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-transparent"
                 onClick={handleErase}
+                disabled={solved || selected == null || isFixed(selected)}
               >
                 Erase
               </button>
               <button
-                className="font-body-lg text-body-lg text-error-red hover:border-b hover:border-error-red pb-0.5 self-start transition-all"
+                className="font-body-lg text-body-lg text-error-red hover:border-b hover:border-error-red pb-0.5 self-start transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-transparent"
                 onClick={handleEndPractice}
+                disabled={solved}
               >
                 End
               </button>
             </div>
             {hintMsg && (
-              <p className="font-body-md text-body-md text-error-red">
+              <p
+                className="font-body-md text-body-md text-error-red"
+                role="status"
+              >
                 {hintMsg}
               </p>
             )}
@@ -436,6 +456,7 @@ function SinglePlayerGameBoardPage() {
               <button
                 className="font-label-mono text-label-mono hover:text-ink-blue transition-colors"
                 onClick={() => setNotesMode(!notesMode)}
+                aria-pressed={notesMode}
               >
                 [{notesMode ? "ON" : "OFF"}]
               </button>

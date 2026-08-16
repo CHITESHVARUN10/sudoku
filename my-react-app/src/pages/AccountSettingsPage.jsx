@@ -1,11 +1,12 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
-import { useAuth } from "../auth/AuthContext";
+import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from "../contexts/AuthContext";
 import Navbar from "../components/Navbar";
 import { fadeUp } from "../components/motion/presets";
 
 function AccountSettingsPage() {
-  const { user } = useAuth();
+  const { user, updateProfile } = useAuth();
   const initials = (user?.name || "?")
     .split(" ")
     .map((p) => p[0])
@@ -13,6 +14,51 @@ function AccountSettingsPage() {
     .slice(0, 2)
     .join("")
     .toUpperCase() || "?";
+
+  const [name, setName] = useState(user?.name || "");
+  const [email] = useState(user?.email || "");
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileMsg, setProfileMsg] = useState(""); // "saved" | error text
+
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [pwdMsg, setPwdMsg] = useState(""); // "saved" | error text
+
+  const saveProfile = async (e) => {
+    e.preventDefault();
+    setProfileMsg("");
+    setSavingProfile(true);
+    try {
+      await updateProfile({ name: name.trim() || user?.name });
+      setProfileMsg("saved");
+    } catch (err) {
+      setProfileMsg(err.message || "Could not save your name.");
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  const changePassword = async (e) => {
+    e.preventDefault();
+    setPwdMsg("");
+    if (newPassword.length < 8) {
+      setPwdMsg("New password must be at least 8 characters.");
+      return;
+    }
+    setChangingPassword(true);
+    try {
+      await updatePassword({ currentPassword, newPassword });
+      setCurrentPassword("");
+      setNewPassword("");
+      setPwdMsg("saved");
+    } catch (err) {
+      setPwdMsg(err.message || "Could not update the password.");
+    } finally {
+      setChangingPassword(false);
+    }
+  };
 
   return (
     <div className="bg-paper-white text-ink-black font-body-md min-h-screen flex flex-col">
@@ -28,148 +74,221 @@ function AccountSettingsPage() {
           </h1>
         </header>
 
-        {/* Identity Section */}
-        <motion.section
+        {/* Profile */}
+        <motion.form
           className="flex gap-8 items-start pb-12 border-b border-ink-black"
           variants={fadeUp}
           initial="hidden"
           animate="visible"
+          onSubmit={saveProfile}
         >
           <div className="w-24 h-24 bg-ink-black text-paper-white flex items-center justify-center flex-shrink-0">
             <span className="font-headline-md text-headline-md">{initials}</span>
           </div>
           <div className="flex flex-col gap-6 w-full pt-1">
             <div>
-              <label className="font-label-mono text-grid-notes uppercase tracking-widest text-secondary block mb-1">
+              <label
+                className="font-label-mono text-grid-notes uppercase tracking-widest text-secondary block mb-1"
+                htmlFor="profile-name"
+              >
                 Name
               </label>
               <input
+                id="profile-name"
+                name="name"
                 className="input-underline font-body-lg text-body-lg"
                 type="text"
-                defaultValue={user?.name || ""}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
               />
             </div>
             <div>
-              <label className="font-label-mono text-grid-notes uppercase tracking-widest text-secondary block mb-1">
+              <label
+                className="font-label-mono text-grid-notes uppercase tracking-widest text-secondary block mb-1"
+                htmlFor="profile-email"
+              >
                 Email
               </label>
               <input
+                id="profile-email"
+                name="email"
                 className="input-underline font-body-lg text-body-lg"
                 type="email"
-                defaultValue={user?.email || ""}
+                value={email}
+                readOnly
+                aria-describedby="email-note"
               />
+              <p
+                id="email-note"
+                className="font-body-md text-[12px] text-note-gray mt-1"
+              >
+                Email is used for sign-in and cannot be changed here.
+              </p>
+            </div>
+            <AnimatePresence>
+              {profileMsg && (
+                <motion.p
+                  role={profileMsg === "saved" ? "status" : "alert"}
+                  className={`font-body-md text-body-md px-3 py-2 ${
+                    profileMsg === "saved"
+                      ? "border border-ink-black bg-surface-variant text-ink-black"
+                      : "border border-error-red bg-error-red/10 text-error-red"
+                  }`}
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.2, ease: "easeOut" }}
+                >
+                  {profileMsg === "saved"
+                    ? "Profile saved."
+                    : profileMsg}
+                </motion.p>
+              )}
+            </AnimatePresence>
+            <div className="flex items-center gap-3">
+              <button
+                type="submit"
+                disabled={savingProfile || !name.trim()}
+                className="bg-ink-black text-paper-white font-label-mono text-label-mono uppercase tracking-widest px-6 py-3 hover:bg-ink-blue transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {savingProfile ? "Saving…" : "Save name"}
+              </button>
             </div>
           </div>
-        </motion.section>
+        </motion.form>
 
-        {/* Password Section */}
-        <motion.section
+        {/* Password */}
+        <motion.form
           className="flex flex-col gap-6 pb-12 border-b border-ink-black"
           variants={fadeUp}
           initial="hidden"
           animate="visible"
           transition={{ delay: 0.08 }}
+          onSubmit={changePassword}
         >
           <h2 className="font-label-mono text-label-mono uppercase tracking-widest">
             Security
           </h2>
           <div className="flex flex-col gap-6">
             <div>
-              <label className="font-label-mono text-grid-notes uppercase tracking-widest text-secondary block mb-1">
-                Current Password
+              <label
+                className="font-label-mono text-grid-notes uppercase tracking-widest text-secondary block mb-1"
+                htmlFor="current-password"
+              >
+                Current password
               </label>
               <input
+                id="current-password"
+                name="currentPassword"
                 className="input-underline font-body-lg text-body-lg"
-                type="password"
-                defaultValue="********"
+                type={showPassword ? "text" : "password"}
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                autoComplete="current-password"
+                required
               />
             </div>
             <div>
-              <label className="font-label-mono text-grid-notes uppercase tracking-widest text-secondary block mb-1">
-                New Password
+              <label
+                className="font-label-mono text-grid-notes uppercase tracking-widest text-secondary block mb-1"
+                htmlFor="new-password"
+              >
+                New password
               </label>
               <input
+                id="new-password"
+                name="newPassword"
                 className="input-underline font-body-lg text-body-lg"
-                placeholder="Leave blank to keep current"
-                type="password"
+                type={showPassword ? "text" : "password"}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                autoComplete="new-password"
+                required
+                minLength={8}
+                aria-describedby="password-hint"
               />
+              <p
+                id="password-hint"
+                className="font-body-md text-[12px] text-note-gray mt-1"
+              >
+                At least 8 characters.
+              </p>
             </div>
-            <button className="self-start font-label-mono text-grid-notes uppercase tracking-widest border-b border-ink-black hover:border-b-2 transition-all mt-2">
-              Update Password
-            </button>
+            <div className="flex items-center gap-4">
+              <button
+                type="button"
+                onClick={() => setShowPassword((s) => !s)}
+                className="font-label-mono text-grid-notes uppercase tracking-widest text-secondary hover:text-ink-black transition-colors self-start"
+              >
+                {showPassword ? "Hide" : "Show"} passwords
+              </button>
+            </div>
+            <AnimatePresence>
+              {pwdMsg && (
+                <motion.p
+                  role={pwdMsg === "saved" ? "status" : "alert"}
+                  className={`font-body-md text-body-md px-3 py-2 ${
+                    pwdMsg === "saved"
+                      ? "border border-ink-black bg-surface-variant text-ink-black"
+                      : "border border-error-red bg-error-red/10 text-error-red"
+                  }`}
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.2, ease: "easeOut" }}
+                >
+                  {pwdMsg === "saved"
+                    ? "Password updated. Use it next time you sign in."
+                    : pwdMsg}
+                </motion.p>
+              )}
+            </AnimatePresence>
+            <div className="flex items-center gap-3">
+              <button
+                type="submit"
+                disabled={changingPassword || !currentPassword || newPassword.length < 8}
+                className="bg-ink-black text-paper-white font-label-mono text-label-mono uppercase tracking-widest px-6 py-3 hover:bg-ink-blue transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {changingPassword ? "Updating…" : "Update password"}
+              </button>
+            </div>
           </div>
-        </motion.section>
+        </motion.form>
 
-        {/* Preferences Section */}
+        {/* Danger Zone */}
         <motion.section
-          className="flex flex-col gap-8 pb-12 border-b border-ink-black"
+          className="flex flex-col gap-6 pb-12 border-b border-ink-black"
           variants={fadeUp}
           initial="hidden"
           animate="visible"
           transition={{ delay: 0.16 }}
         >
           <h2 className="font-label-mono text-label-mono uppercase tracking-widest">
-            Preferences
+            Danger zone
           </h2>
-          {/* Default Difficulty */}
-          <div className="flex flex-col gap-3">
-            <label className="font-label-mono text-grid-notes uppercase tracking-widest text-secondary block">
-              Default Difficulty
-            </label>
-            <div className="flex w-full">
-              <button className="segmented-btn flex-1 py-2 font-label-mono text-grid-notes uppercase tracking-widest hover:bg-surface-variant transition-colors">
-                Easy
-              </button>
-              <button className="segmented-btn flex-1 py-2 font-label-mono text-grid-notes uppercase tracking-widest active transition-colors">
-                Medium
-              </button>
-              <button className="segmented-btn flex-1 py-2 font-label-mono text-grid-notes uppercase tracking-widest hover:bg-surface-variant transition-colors">
-                Hard
-              </button>
-              <button className="segmented-btn flex-1 py-2 font-label-mono text-grid-notes uppercase tracking-widest hover:bg-surface-variant transition-colors">
-                Expert
-              </button>
+          <div className="flex items-center justify-between gap-4 flex-wrap border border-error-red p-4">
+            <div className="flex flex-col gap-1">
+              <span className="font-body-md text-body-md font-medium">
+                Delete account
+              </span>
+              <span className="font-body-md text-[12px] text-secondary">
+                Permanently removes your account and match history. This cannot
+                be undone.
+              </span>
             </div>
-          </div>
-          {/* Notes Mode Default */}
-          <div className="flex items-center justify-between mt-4">
-            <label className="font-label-mono text-grid-notes uppercase tracking-widest text-secondary">
-              Notes Mode Default
-            </label>
-            <div className="flex gap-2 font-grid-number text-grid-number">
-              <button className="hover:opacity-70 transition-opacity">[ON]</button>
-              <button className="text-secondary opacity-50 hover:opacity-100 transition-opacity">
-                [OFF]
-              </button>
-            </div>
-          </div>
-          {/* Theme */}
-          <div className="flex items-center justify-between mt-4">
-            <label className="font-label-mono text-grid-notes uppercase tracking-widest text-secondary">
-              Theme
-            </label>
-            <div className="flex gap-4">
-              <motion.button
-                whileTap={{ scale: 0.9 }}
-                className="w-8 h-8 bg-paper-white border border-ink-black shadow-[0_0_0_2px_#1A1A1A]"
-              ></motion.button>
-              <motion.button
-                whileTap={{ scale: 0.9 }}
-                className="w-8 h-8 bg-ink-black border border-ink-black hover:shadow-[0_0_0_1px_#1A1A1A]"
-              ></motion.button>
-            </div>
+            <button
+              type="button"
+              onClick={() =>
+                window.confirm(
+                  "Delete your account and all history? This cannot be undone."
+                ) && alert("Account deletion is not available yet.")
+              }
+              className="font-label-mono text-grid-notes uppercase tracking-widest text-error-red hover:bg-error-red hover:text-paper-white transition-colors border border-error-red px-4 py-2"
+            >
+              Delete account
+            </button>
           </div>
         </motion.section>
-
-        {/* Bottom Actions */}
-        <section className="flex flex-col gap-6 items-center pt-4">
-          <button className="w-full bg-ink-black text-paper-white font-label-mono text-label-mono uppercase tracking-widest py-4 hover:bg-primary-container transition-colors">
-            SAVE CHANGES
-          </button>
-          <button className="font-label-mono text-grid-notes text-secondary hover:text-ink-black transition-colors underline">
-            Delete Account
-          </button>
-        </section>
       </main>
 
       {/* Footer */}

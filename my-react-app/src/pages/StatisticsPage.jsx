@@ -319,8 +319,8 @@ function StatisticsPage() {
             <Link to="/about" className="text-note-gray hover:text-ink-black transition-colors duration-150">
               Terms of Service
             </Link>
-            <Link to="/about" className="text-note-gray hover:text-ink-black transition-colors duration-150">
-              Accessibility
+            <Link to="/how-to-play" className="text-note-gray hover:text-ink-black transition-colors duration-150">
+              How to Play
             </Link>
           </div>
         </div>

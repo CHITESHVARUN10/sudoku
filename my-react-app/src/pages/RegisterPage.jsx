@@ -138,6 +138,7 @@ function RegisterPage() {
                     <button
                       className="absolute right-0 top-1/2 -translate-y-1/2 text-note-gray hover:text-ink-black transition-colors focus:outline-none"
                       type="button"
+                      aria-label={showPassword ? "Hide password" : "Show password"}
                       onClick={() => setShowPassword(!showPassword)}
                     >
                       <span className="material-symbols-outlined">

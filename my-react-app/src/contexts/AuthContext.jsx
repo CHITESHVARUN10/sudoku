@@ -83,6 +83,14 @@ export function AuthProvider({ children }) {
     return res.user;
   }, [persist]);
 
+  const updatePassword = useCallback(async ({ currentPassword, newPassword }) => {
+    const res = await apiClient.post("/auth/user/change-password", {
+      currentPassword,
+      newPassword,
+    });
+    return res;
+  }, []);
+
   const forgotPassword = useCallback(async (email) => {
     const res = await apiClient.post("/auth/user/forgot-password", { email });
     return res;
@@ -106,6 +114,7 @@ export function AuthProvider({ children }) {
         logout,
         refreshUser,
         updateProfile,
+        updatePassword,
         forgotPassword,
         resetPassword,
       }}

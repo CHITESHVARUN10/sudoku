@@ -130,7 +130,7 @@ function SinglePlayerSetupPage() {
                     key={level}
                     whileTap={{ scale: 0.97 }}
                     onClick={() => selectDifficulty(level)}
-                    className={`flex-1 py-3 font-label-mono text-label-mono text-sm transition-colors focus:outline-none ${
+                    className={`flex-1 py-3 font-label-mono text-label-mono text-sm transition-colors ${
                       difficulty === level
                         ? "bg-ink-blue text-paper-white"
                         : "text-ink-black bg-paper-white hover:bg-surface-container focus:bg-surface-container"
