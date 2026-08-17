@@ -3,6 +3,9 @@ const http = require('http');
 const app = express();
 const dotenv = require('dotenv');
 const cors = require('cors');
+
+// Enable trust proxy for cloud platforms (Render, Railway, Heroku)
+app.set('trust proxy', 1);
 const { sessionMiddleware, passport } = require('./middleware/session');
 const connectDB = require('./db');
 const { attachSocket } = require('./services/socket');

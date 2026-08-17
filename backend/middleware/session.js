@@ -6,6 +6,8 @@ const passport = require('passport');
 
 const MongoStore = connectMongo.MongoStore || connectMongo.default;
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 const sessionMiddleware = session({
   secret: process.env.SECRET_KEY || 'your-secret-key',
   resave: false,
@@ -18,9 +20,9 @@ const sessionMiddleware = session({
     touchAfter: 24 * 3600, // reduce writes (seconds)
   }),
   cookie: {
-    // Secure cookies only over HTTPS; the .env sets NODE_ENV=production for
-    // local dev, so don't blindly force secure or local login breaks.
-    secure: process.env.COOKIE_SECURE === 'true',
+    // In production (Vercel <-> Render cross-domain), sameSite: 'none' and secure: true are required
+    secure: isProduction ? true : process.env.COOKIE_SECURE === 'true',
+    sameSite: isProduction ? 'none' : 'lax',
     maxAge: 24 * 60 * 60 * 1000, // 24 hours
   },
 });
