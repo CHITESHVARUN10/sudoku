@@ -19,7 +19,7 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 // Standard Express Middlewares
-app.use(cors({ origin: 'http://localhost:5173', credentials: true }));
+app.use(cors({ origin: true, credentials: true }));
 app.use(express.json()); // Parses incoming JSON requests
 app.use(express.urlencoded({ extended: true })); // Parses URL-encoded data
 

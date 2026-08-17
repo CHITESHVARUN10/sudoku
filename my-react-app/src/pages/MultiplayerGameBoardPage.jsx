@@ -197,21 +197,17 @@ function MultiplayerGameBoardPage() {
   // Simultaneous play: both players can act at any time while the match is active.
   const canAct = connected && match?.status === "active";
 
-  // Cell ownership: the LAST real mark (fill/power-up) in moveHistory owns a
-  // cell. You can override the opponent's mark but never your own.
-  const isOwnMarked = (idx) => {
-    const h = match?.moveHistory || [];
-    for (let i = h.length - 1; i >= 0; i--) {
-      const m = h[i];
-      if (m.cell === idx && !m.isNote) return m.player === mySeat;
-    }
-    return false;
+  // Race mode: each player sees ONLY their own board. A cell is locked
+  // (immutable) when the server says 'locked' (correct). 'wrong' cells on
+  // your board can be retried; 'given' cells are clues. No shared ownership.
+  const isLockedForMe = (idx) => {
+    const s = match?.cellStatus?.[idx];
+    return s === "given" || s === "locked";
   };
 
   const handleCellClick = (index) => {
     if (!canAct) return;
-    if (match?.cellStatus?.[index] === "given") return;
-    if (isOwnMarked(index)) return;
+    if (isLockedForMe(index)) return;
     // If a power-up is armed, clicking a cell applies it directly.
     if (powerUpArmed) {
       sendPowerUp(index);
@@ -224,9 +220,8 @@ function MultiplayerGameBoardPage() {
 
   const handleNumpad = (value) => {
     if (!canAct || selected == null) return;
-    if (match?.cellStatus?.[selected] === "given") return;
-    if (isOwnMarked(selected)) return;
-    if (notesMode && match?.cellStatus?.[selected] !== "wrong") {
+    if (isLockedForMe(selected)) return;
+    if (notesMode && match?.cellStatus?.[selected] == null) {
       setNotes((cur) => {
         const next = [...cur];
         const set = new Set(next[selected]);
@@ -266,6 +261,7 @@ function MultiplayerGameBoardPage() {
 
   const grid = match?.board || [];
   const cellStatus = match?.cellStatus || [];
+  const ghost = match?.ghost || [];
 
   return (
     <div className="min-h-screen flex flex-col bg-paper-white text-ink-black font-body-md text-body-md antialiased">
@@ -405,13 +401,15 @@ function MultiplayerGameBoardPage() {
           >
             {Array.from({ length: 81 }, (_, index) => {
               const value = grid[index];
-              const status = cellStatus[index];
+              const status = cellStatus[index]; // race: given|locked|wrong|null
+              const isGhost = ghost[index] === true;
               const notesSet = notes[index] || [];
               const isSelected = selected === index;
+              // Ghost '?' is a view-only hint: opponent solved correctly, you haven't.
+              // Your own board is still null there, so you can still place a value.
               const cls = `mp-sudoku-cell ${status || ""} ${
-                isSelected ? "selected" : ""
-              }`;
-              const ownKey = status === "wrong" || status === "locked";
+                isGhost && value == null ? "ghost" : ""
+              } ${isSelected ? "selected" : ""}`;
               return (
                 <div
                   key={index}
@@ -424,10 +422,12 @@ function MultiplayerGameBoardPage() {
                       initial={{ scale: 0.85, opacity: 0 }}
                       animate={{ scale: 1, opacity: 1 }}
                       transition={{ duration: 0.15, ease: "easeOut" }}
-                      className={ownKey ? "mp-cell-mark-pop" : undefined}
+                      className="mp-cell-mark-pop"
                     >
                       {value}
                     </motion.span>
+                  ) : isGhost ? (
+                    <span className="mp-ghost">?</span>
                   ) : notesSet.length ? (
                     <span className="notes-grid">{notesSet.join("")}</span>
                   ) : (
@@ -486,8 +486,7 @@ function MultiplayerGameBoardPage() {
                 Power-up
                 {match?.powerUpsLeft ? (
                   <span className="text-secondary">
-                    (
-                    {match.powerUpsLeft[myIndex === 0 ? "p1" : "p2"] ?? 0}/
+                    ({match.powerUpsLeft?.[myIndex === 0 ? "p1" : "p2"] ?? 0}/
                     {match.powerUpsMax ?? 3})
                   </span>
                 ) : null}

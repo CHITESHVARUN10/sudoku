@@ -1,8 +1,6 @@
-// Power-up logic: reveal the correct number for a cell.
-// Each player has a max (set at room creation, 0-3); using one consumes it.
-// Ownership (can't power-up your own marked cell / clues) is enforced by the
-// socket handler via cellOwner — the board may hold the opponent's masked
-// fills, so a plain "cell is filled" check would wrongly block power-ups.
+// Power-up logic: reveal the correct number for a cell on the ACTOR's own
+// board (race mode). Ownership vs clues is enforced by the socket handler;
+// this helper only checks availability, validates bounds, and decrements.
 
 function canUsePowerUp(match, player) {
   const key = player === 1 ? 'p1' : 'p2';
@@ -11,8 +9,8 @@ function canUsePowerUp(match, player) {
   return true; // no turn restriction — multiplayer is simultaneous
 }
 
-// Reveal the solution value at `cell`. Returns { ok, value, powerUpsLeft } or
-// { ok: false, reason }.
+// Return { ok, value } or { ok:false, reason }. The caller writes the value
+// to the actor's board via setBoardForSeat — this helper does NOT mutate.
 function usePowerUp(match, player, cell) {
   const key = player === 1 ? 'p1' : 'p2';
 
@@ -23,8 +21,12 @@ function usePowerUp(match, player, cell) {
     return { ok: false, reason: 'Invalid cell.' };
   }
 
+  // Final clue check lives in the socket handler; keep a guard here too.
+  if (match.initialBoard[cell] != null) {
+    return { ok: false, reason: 'Cell is a clue.' };
+  }
+
   const value = match.solution[cell];
-  match.board[cell] = value;
   match.powerUpsLeft[key] -= 1;
 
   return { ok: true, value };

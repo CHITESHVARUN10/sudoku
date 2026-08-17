@@ -89,10 +89,27 @@ const matchSchema = new Schema(
       max: 15,
       default: 0,
     },
+    boards: {
+      p1: {
+        type: [cellSchema],
+        validate: {
+          validator: (arr) => !arr || arr.length === 81,
+          message: 'Board must contain exactly 81 cells',
+        },
+      },
+      p2: {
+        type: [cellSchema],
+        validate: {
+          validator: (arr) => !arr || arr.length === 81,
+          message: 'Board must contain exactly 81 cells',
+        },
+      },
+    },
+    // Legacy single board kept for migration of old docs — new matches use `boards`.
     board: {
       type: [cellSchema],
       validate: {
-        validator: (arr) => arr.length === 81,
+        validator: (arr) => !arr || arr.length === 81,
         message: 'Board must contain exactly 81 cells',
       },
     },

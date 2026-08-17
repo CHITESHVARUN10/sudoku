@@ -51,81 +51,72 @@ function generateRoomCode() {
   return `SD-${a}-${b}`;
 }
 
-// 81-cell status array: null = empty, 'given' = initial clue, 'locked' =
-// correctly solved (cannot change), 'wrong' = filled but incorrect.
-function buildCellStatus(match) {
-  return match.board.map((v, i) => {
+// ---- Independent per-player boards (race mode) ----
+// Each seat has its own 81-cell grid. Clues/solution are shared. A move
+// touches ONLY the actor's board — no masking, no '?' ghost, no cross-overwrite.
+
+function ensureBoards(match) {
+  if (match.boards && match.boards.p1 && match.boards.p2) return;
+  const legacy = match.board && match.board.length === 81 ? match.board : match.initialBoard;
+  if (!match.boards) match.boards = {};
+  if (!match.boards.p1) match.boards.p1 = [...legacy];
+  if (!match.boards.p2) match.boards.p2 = [...legacy];
+  match.markModified('boards');
+}
+
+function boardForSeat(match, seat) {
+  ensureBoards(match);
+  return seat === 1 ? match.boards.p1 : match.boards.p2;
+}
+
+function setBoardForSeat(match, seat, next) {
+  ensureBoards(match);
+  if (seat === 1) match.boards.p1 = next;
+  else match.boards.p2 = next;
+  match.markModified('boards');
+}
+
+function cellStatusForSeat(match, seat) {
+  const b = boardForSeat(match, seat);
+  return b.map((v, i) => {
     if (v == null) return null;
     if (match.initialBoard[i] != null) return 'given';
-    if (v === match.solution[i]) return 'locked';
-    return 'wrong';
+    return v === match.solution[i] ? 'locked' : 'wrong';
   });
 }
 
-// Per-viewer masked board + status. Hidden-move game: the opponent must NOT
-// see what number you placed or whether it was right/wrong — only WHICH cells
-// have been marked (a neutral '?' for your correct fills; wrong fills show as
-// empty). Clues and the viewer's own fills stay visible.
-// Returns { board, cellStatus }.
-function buildViewerState(match, viewerSeat) {
-  const maskedBoard = [];
-  const maskedStatus = [];
+function isBoardSolvedForSeat(match, seat) {
+  const b = boardForSeat(match, seat);
+  return b.every((v, i) => v != null && v === match.solution[i]);
+}
+
+function opponentProgress(match, viewerSeat) {
+  const oppSeat = viewerSeat === 1 ? 2 : 1;
+  const oppBoard = boardForSeat(match, oppSeat);
+  let filled = 0;
+  let correct = 0;
   for (let i = 0; i < 81; i++) {
-    const v = match.board[i];
-    if (v == null) {
-      maskedBoard.push(null);
-      maskedStatus.push(null);
-      continue;
-    }
-    // Clues are shared.
-    if (match.initialBoard[i] != null) {
-      maskedBoard.push(v);
-      maskedStatus.push('given');
-      continue;
-    }
-    // Which seat placed the value currently in this cell?
-    let placedBy = null;
-    for (let h = match.moveHistory.length - 1; h >= 0; h--) {
-      const m = match.moveHistory[h];
-      if (m.cell === i && m.value != null && !m.isNote) {
-        placedBy = m.player;
-        break;
-      }
-    }
-    const isMine = placedBy === viewerSeat;
-    if (isMine) {
-      maskedBoard.push(v);
-      maskedStatus.push(v === match.solution[i] ? 'locked' : 'wrong');
-    } else if (v === match.solution[i]) {
-      // Opponent's correct fill: neutral marker, no value.
-      maskedBoard.push('?');
-      maskedStatus.push('opponent');
-    } else {
-      // Opponent's wrong fill: hidden entirely.
-      maskedBoard.push(null);
-      maskedStatus.push(null);
+    if (oppBoard[i] != null) {
+      filled++;
+      if (oppBoard[i] === match.solution[i]) correct++;
     }
   }
-  return { board: maskedBoard, cellStatus: maskedStatus };
+  return { filled, correct };
 }
 
-// Which seat's CURRENT mark owns a cell? Returns 1, 2, or null.
-// Clues belong to no one (locked for both). moveHistory is append-only, so the
-// LAST real mark (fill or power-up) for a cell is its current owner. A player
-// may override the opponent's mark but can never change their own.
-function cellOwner(match, cell) {
-  if (match.initialBoard[cell] != null) return null; // clue — locked for all
-  for (let h = match.moveHistory.length - 1; h >= 0; h--) {
-    const m = match.moveHistory[h];
-    if (m.cell === cell && !m.isNote) {
-      return m.player;
+function ghostMaskForSeat(match, viewerSeat) {
+  const ownBoard = boardForSeat(match, viewerSeat);
+  const oppSeat = viewerSeat === 1 ? 2 : 1;
+  const oppBoard = boardForSeat(match, oppSeat);
+  const mask = Array(81).fill(false);
+  for (let i = 0; i < 81; i++) {
+    if (ownBoard[i] != null) continue; // own value present — no ghost
+    if (match.initialBoard[i] != null) continue; // clue — never ghost
+    if (oppBoard[i] != null && oppBoard[i] === match.solution[i]) {
+      mask[i] = true; // opponent solved correctly, you haven't — show '?'
     }
   }
-  return null;
-}
-
-function isBoardSolved(match) {
-  return match.board.every((v, i) => v != null && v === match.solution[i]);
+  return mask;
 }
 
 async function fetchMatchPlayers(match) {
@@ -136,16 +127,22 @@ async function fetchMatchPlayers(match) {
   return [p1, p2];
 }
 
-// Full state payload for ONE viewer (seat 1 or 2). Used by match:start /
-// match:state (rejoin). The board/status/moveHistory are masked per viewer so
-// the opponent's values and correctness never leave the server.
+// Full state payload for ONE viewer (seat 1 or 2). Board is per-player
+// (race mode) — each viewer gets their OWN board/status. Ghost '?' is a
+// view-only overlay (opponent correct && you empty), not a stored value.
 function buildStatePayload(match, players, viewerSeat) {
-  const { board, cellStatus } = buildViewerState(match, viewerSeat);
+  ensureBoards(match);
+  const ownBoard = boardForSeat(match, viewerSeat);
+  const ownStatus = cellStatusForSeat(match, viewerSeat);
+  const ownNotes =
+    viewerSeat === 1 ? match.notes?.p1 : match.notes?.p2;
   return {
     matchId: match._id,
-    board,
+    board: ownBoard,
     initialBoard: match.initialBoard,
-    cellStatus,
+    cellStatus: ownStatus,
+    ghost: ghostMaskForSeat(match, viewerSeat),
+    opponentProgress: opponentProgress(match, viewerSeat),
     difficulty: match.difficulty,
     clueCount: match.clueCount,
     players: players.map((p) =>
@@ -162,7 +159,7 @@ function buildStatePayload(match, players, viewerSeat) {
     ),
     scores: match.scores,
     mistakes: match.mistakes,
-    notes: match.notes,
+    notes: ownNotes != null ? ownNotes : match.notes,
     powerUpsLeft: match.powerUpsLeft,
     powerUpsMax: match.powerUpsMax,
     clocks: match.clocks,
@@ -202,9 +199,10 @@ async function tickClocks(io, match) {
   return false;
 }
 
-// Broadcast the live match state to both players — each gets a per-viewer
-// masked payload so opponent values/correctness never leave the server.
+// Broadcast the live match state to both players — each gets their OWN
+// board/status + view-only ghost overlay (race mode).
 async function emitMatchState(io, match) {
+  ensureBoards(match);
   const players = await fetchMatchPlayers(match);
   const common = {
     matchId: match._id,
@@ -212,19 +210,23 @@ async function emitMatchState(io, match) {
     turnNumber: match.turnNumber,
     scores: match.scores,
     mistakes: match.mistakes,
-    notes: match.notes,
     powerUpsLeft: match.powerUpsLeft,
     clocks: match.clocks,
     status: match.status,
   };
   for (const seat of [1, 2]) {
-    const { board, cellStatus } = buildViewerState(match, seat);
+    const ownBoard = boardForSeat(match, seat);
+    const ownStatus = cellStatusForSeat(match, seat);
+    const ownNotes = seat === 1 ? match.notes?.p1 : match.notes?.p2;
     const uid = seat === 1 ? match.player1 : match.player2;
     const viewerPlayers = seat === 1 ? players : [players[1], players[0]];
     io.to(`user:${uid}`).emit('match:state', {
       ...common,
-      board,
-      cellStatus,
+      board: ownBoard,
+      cellStatus: ownStatus,
+      ghost: ghostMaskForSeat(match, seat),
+      opponentProgress: opponentProgress(match, seat),
+      notes: ownNotes != null ? ownNotes : match.notes,
       players: viewerPlayers.map((p) =>
         p ? { _id: p._id, name: p.name, elo: p.elo } : null
       ),
@@ -295,7 +297,7 @@ async function endMatch(io, match, winnerPlayer, reason) {
 function attachSocket(server) {
   const io = new Server(server, {
     cors: {
-      origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+      origin: true,
       methods: ['GET', 'POST'],
       credentials: true,
     },
@@ -332,7 +334,8 @@ function attachSocket(server) {
         difficulty: room.difficulty,
         clueCount: room.clueCount,
         timerMinPerPlayer: room.timerMinPerPlayer,
-        board: puzzle.puzzle,
+        boards: { p1: [...puzzle.puzzle], p2: [...puzzle.puzzle] },
+        board: puzzle.puzzle, // legacy — kept for old docs
         initialBoard: puzzle.puzzle,
         solution: puzzle.solution,
         turn: 1,
@@ -365,7 +368,7 @@ function attachSocket(server) {
         s.matchId = match._id;
       }
 
-      // Send each player their own masked start payload (hidden-move game).
+      // Send each player their OWN board (race mode — no masking).
       for (const seat of [1, 2]) {
         const uid = seat === 1 ? match.player1 : match.player2;
         const seatPlayers = seat === 1 ? players : [players[1], players[0]];
@@ -526,9 +529,8 @@ function attachSocket(server) {
       }
     });
 
-    // Validate + apply a move. Both players act SIMULTANEOUSLY on the shared
-    // grid — a cell locks once it holds the correct value; wrong values can
-    // be overwritten by either player.
+    // Validate + apply a move. Race mode: each player writes ONLY to their
+    // own board. One player's mark has no effect on the opponent's grid.
     socket.on('match:move', ({ matchId, userId, cell, value }) => {
       enqueueMatchOp(matchId, async () => {
         try {
@@ -557,15 +559,20 @@ function attachSocket(server) {
             socket.emit('error', { message: 'Not a player in this match.' });
             return;
           }
-          const owner = cellOwner(match, cell);
-          // Clues are unowned but still un-overridable.
           if (match.initialBoard[cell] != null) {
             socket.emit('error', { message: 'Cell is a clue.' });
             return;
           }
-          if (owner === player) {
+          ensureBoards(match);
+          const ownBoard = boardForSeat(match, player);
+          // Locked correct cells on OWN board cannot be changed; wrong cells on
+          // own board can be overwritten (player corrects their mistake).
+          if (
+            ownBoard[cell] != null &&
+            ownBoard[cell] === match.solution[cell]
+          ) {
             socket.emit('error', {
-              message: 'You already marked that cell.',
+              message: 'That cell is already correct.',
             });
             return;
           }
@@ -573,14 +580,14 @@ function attachSocket(server) {
           if (await tickClocks(io, match)) return; // match ended via timeout
 
           const correct = value === match.solution[cell];
-          const { board, delta } = applyMove({
-            board: match.board,
+          const { board: next, delta } = applyMove({
+            board: ownBoard,
             cell,
             value,
             correct,
           });
 
-          match.board = board;
+          setBoardForSeat(match, player, next);
           const scoreKey = player === 1 ? 'p1' : 'p2';
           match.scores[scoreKey] += delta;
           if (!correct) match.mistakes[scoreKey] += 1;
@@ -596,7 +603,7 @@ function attachSocket(server) {
           match.lastMoveAt = new Date();
           await match.save();
 
-          if (isBoardSolved(match)) {
+          if (isBoardSolvedForSeat(match, player)) {
             await endMatch(io, match, player, 'solved');
             return;
           }
@@ -607,8 +614,7 @@ function attachSocket(server) {
       });
     });
 
-    // Reveal a cell via power-up. Power-ups are per-player but can be used
-    // at ANY time (no turns).
+    // Reveal a cell via power-up. Race mode: reveals on the ACTOR's own board only.
     socket.on('match:powerup', ({ matchId, userId, cell }) => {
       enqueueMatchOp(matchId, async () => {
         try {
@@ -635,17 +641,18 @@ function attachSocket(server) {
 
           if (await tickClocks(io, match)) return; // match ended via timeout
 
-          // Power-ups obey the same ownership rule as moves: usable on any
-          // non-clue cell not already marked by THIS player — including cells
-          // the opponent secretly filled wrong (they look empty to us).
-          const owner = cellOwner(match, cell);
+          ensureBoards(match);
           if (match.initialBoard[cell] != null) {
             socket.emit('error', { message: 'Cell is a clue.' });
             return;
           }
-          if (owner === player) {
+          const ownBoard = boardForSeat(match, player);
+          if (
+            ownBoard[cell] != null &&
+            ownBoard[cell] === match.solution[cell]
+          ) {
             socket.emit('error', {
-              message: 'You already marked that cell.',
+              message: 'That cell is already correct.',
             });
             return;
           }
@@ -655,6 +662,14 @@ function attachSocket(server) {
             socket.emit('error', { message: res.reason });
             return;
           }
+
+          const { board: _next } = applyMove({
+            board: ownBoard,
+            cell,
+            value: res.value,
+            correct: true,
+          });
+          setBoardForSeat(match, player, _next);
 
           match.moveHistory.push({
             player,
@@ -668,7 +683,7 @@ function attachSocket(server) {
           match.lastMoveAt = new Date();
           await match.save();
 
-          if (isBoardSolved(match)) {
+          if (isBoardSolvedForSeat(match, player)) {
             await endMatch(io, match, player, 'solved');
             return;
           }

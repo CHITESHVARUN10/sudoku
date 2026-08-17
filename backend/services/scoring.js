@@ -61,15 +61,18 @@ function scoreMove({ board, cell, value, correct }) {
 }
 
 // Full pipeline: apply a move to a board copy and return { board, delta, completedLines }.
+// NOTE: scoreMove internally clones again (next), so pass the ORIGINAL board here —
+// it handles the cell placement itself. Double-applying would mis-count completions.
 function applyMove({ board, cell, value, correct }) {
-  const next = [...board];
-  next[cell] = value;
-
   if (value == null) {
+    const next = [...board];
+    next[cell] = value;
     return { board: next, delta: 0, completedLines: 0 };
   }
 
-  const res = scoreMove({ board: next, cell, value, correct });
+  const res = scoreMove({ board, cell, value, correct });
+  const next = [...board];
+  next[cell] = value;
   return { board: next, ...res };
 }
 

@@ -386,12 +386,22 @@ body {
   color: #c43f3f;
 }
 
-/* Opponent's correct fill: shown as a neutral '?' marker — no value, no
-   right/wrong hint (hidden-move multiplayer). */
-.mp-sudoku-cell.opponent {
+/* View-only ghost: opponent solved correctly, you haven't filled it yet.
+   Faint '?' — selectable, overwritten when you place your own value. */
+.mp-ghost {
   color: #7a7875;
   font-weight: 400;
   font-size: 20px;
+  pointer-events: none;
+}
+
+.mp-sudoku-cell.ghost {
+  background-color: rgba(122, 120, 117, 0.08);
+}
+
+/* Legacy shared-board ghost kept as no-op for old payloads. */
+.mp-sudoku-cell.opponent {
+  color: transparent;
 }
 
 .mp-sudoku-cell.locked.selected {
