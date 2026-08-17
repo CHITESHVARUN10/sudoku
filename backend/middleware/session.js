@@ -11,7 +11,10 @@ const sessionMiddleware = session({
   resave: false,
   saveUninitialized: false,
   store: MongoStore.create({
-    mongoUrl: process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/sudoku-app',
+    mongoUrl:
+      process.env.MONGODB_URI ||
+      process.env.MONGO_URI ||
+      'mongodb://127.0.0.1:27017/sudoku-app',
     touchAfter: 24 * 3600, // reduce writes (seconds)
   }),
   cookie: {

@@ -219,7 +219,6 @@ async function emitMatchState(io, match) {
     const ownStatus = cellStatusForSeat(match, seat);
     const ownNotes = seat === 1 ? match.notes?.p1 : match.notes?.p2;
     const uid = seat === 1 ? match.player1 : match.player2;
-    const viewerPlayers = seat === 1 ? players : [players[1], players[0]];
     io.to(`user:${uid}`).emit('match:state', {
       ...common,
       board: ownBoard,
@@ -227,7 +226,7 @@ async function emitMatchState(io, match) {
       ghost: ghostMaskForSeat(match, seat),
       opponentProgress: opponentProgress(match, seat),
       notes: ownNotes != null ? ownNotes : match.notes,
-      players: viewerPlayers.map((p) =>
+      players: players.map((p) =>
         p ? { _id: p._id, name: p.name, elo: p.elo } : null
       ),
       moveHistory: match.moveHistory.map((m) =>
@@ -369,11 +368,11 @@ function attachSocket(server) {
       }
 
       // Send each player their OWN board (race mode — no masking).
+      // players is absolute [p1, p2]; frontend derives seat from ids.
       for (const seat of [1, 2]) {
         const uid = seat === 1 ? match.player1 : match.player2;
-        const seatPlayers = seat === 1 ? players : [players[1], players[0]];
         io.to(`user:${uid}`).emit('match:start', {
-          ...buildStatePayload(match, seatPlayers, seat),
+          ...buildStatePayload(match, players, seat),
           timerMin: match.timerMinPerPlayer,
         });
       }
