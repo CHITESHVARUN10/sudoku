@@ -200,6 +200,20 @@ const matchSchema = new Schema(
       type: Number,
       default: 0,
     },
+    // Elo change applied to loser when leave penalty is asymmetric (gap-scaled).
+    eloDeltaLoser: {
+      type: Number,
+      default: 0,
+    },
+    resignRequestedBy: {
+      type: Number,
+      enum: [1, 2, null],
+      default: null,
+    },
+    resignRequestedAt: {
+      type: Date,
+      default: null,
+    },
     startedAt: {
       type: Date,
       default: null,

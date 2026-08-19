@@ -53,8 +53,16 @@ function buildInitialState() {
   };
 }
 
-export function createMockSocket({ onStart, onState, onEnd, onOppDisconnect, onOppReconnect }) {
+function leavePenaltyMock(winnerScore, loserScore) {
+  return Math.min(30, 10 + Math.floor(Math.max(0, winnerScore - loserScore) / 10));
+}
+
+export function createMockSocket({ onStart, onState, onEnd, onOppDisconnect, onOppReconnect, onResignRequested, onResignPending, onResignDeclined, onResignExpired, onLeaveCooldown }) {
   const state = buildInitialState();
+  state.resignRequestedBy = null;
+  state.resignRequestedAt = null;
+  state.startedAt = new Date().toISOString();
+  let resignTimer = null;
 
   // After a short delay, emit match:start (simulating the guest joining).
   const startTimer = setTimeout(() => onStart(state), 600);
@@ -62,10 +70,10 @@ export function createMockSocket({ onStart, onState, onEnd, onOppDisconnect, onO
   // Simulate the opponent briefly disconnecting ~14s in, then reconnecting.
   const disconnectTimer = setTimeout(() => {
     if (state.status !== "active") return;
-    onOppDisconnect();
+    onOppDisconnect?.();
     setTimeout(() => {
       if (state.status !== "active") return;
-      onOppReconnect();
+      onOppReconnect?.();
     }, 3000);
   }, 14000);
 
@@ -155,13 +163,70 @@ export function createMockSocket({ onStart, onState, onEnd, onOppDisconnect, onO
       onState(state);
     },
     resign() {
+      if (state.status !== "active") return;
+      if (state.resignRequestedBy) return;
+      state.resignRequestedBy = 1;
+      state.resignRequestedAt = new Date().toISOString();
+      onResignPending?.({ by: 1 });
+      onState({ ...state });
+      resignTimer = setTimeout(() => {
+        if (state.status !== "active" || !state.resignRequestedBy) return;
+        const winner = state.scores.p1 > state.scores.p2 ? 1 : state.scores.p2 > state.scores.p1 ? 2 : 1;
+        state.status = "completed";
+        state.resignRequestedBy = null;
+        onEnd({ winner, reason: "resign", scores: state.scores, eloDelta: 8, eloDeltaLoser: 8 });
+        clearInterval(oppTimer);
+      }, 2000);
+    },
+    requestResign() {
+      if (state.status !== "active") return;
+      if (state.resignRequestedBy) return;
+      state.resignRequestedBy = 1;
+      state.resignRequestedAt = new Date().toISOString();
+      onResignPending?.({ by: 1 });
+      onState({ ...state });
+      resignTimer = setTimeout(() => {
+        if (state.status !== "active" || !state.resignRequestedBy) return;
+        const winner = state.scores.p1 > state.scores.p2 ? 1 : state.scores.p2 > state.scores.p1 ? 2 : 1;
+        state.status = "completed";
+        state.resignRequestedBy = null;
+        onEnd({ winner, reason: "resign", scores: state.scores, eloDelta: 8, eloDeltaLoser: 8 });
+        clearInterval(oppTimer);
+      }, 2000);
+    },
+    acceptResign() {
+      if (!state.resignRequestedBy) return;
+      const winner = state.scores.p1 > state.scores.p2 ? 1 : state.scores.p2 > state.scores.p1 ? 2 : 1;
       state.status = "completed";
-      onEnd({ winner: 2, reason: "resign", scores: state.scores, eloDelta: 0 });
+      state.resignRequestedBy = null;
+      clearTimeout(resignTimer);
+      onEnd({ winner, reason: "resign", scores: state.scores, eloDelta: 8, eloDeltaLoser: 8 });
+      clearInterval(oppTimer);
+    },
+    declineResign() {
+      if (!state.resignRequestedBy) return;
+      state.resignRequestedBy = null;
+      clearTimeout(resignTimer);
+      onResignDeclined?.({});
+      onState({ ...state });
+    },
+    leaveMatch() {
+      if (state.status !== "active") return;
+      const elapsed = (Date.now() - new Date(state.startedAt).getTime()) / 1000;
+      if (elapsed < 30) {
+        onLeaveCooldown?.({ remaining: Math.ceil(30 - elapsed) });
+        return;
+      }
+      const penalty = leavePenaltyMock(state.scores.p2, state.scores.p1);
+      state.status = "completed";
+      clearTimeout(resignTimer);
+      onEnd({ winner: 2, reason: "leave", scores: state.scores, eloDelta: 8, eloDeltaLoser: penalty });
       clearInterval(oppTimer);
     },
     destroy() {
       clearTimeout(startTimer);
       clearTimeout(disconnectTimer);
+      clearTimeout(resignTimer);
       clearInterval(oppTimer);
     },
   };

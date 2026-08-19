@@ -18,6 +18,12 @@ export function createMatchSocket({
   onError,
   onOppDisconnect,
   onOppReconnect,
+  onResignRequested,
+  onResignPending,
+  onResignDeclined,
+  onResignCancelled,
+  onResignExpired,
+  onLeaveCooldown,
 }) {
   // Lazy: don't connect until the user actually enters a room/match.
   let socket = null;
@@ -39,6 +45,12 @@ export function createMatchSocket({
     socket.on("opponent:disconnected", (data) => onOppDisconnect?.(data));
     socket.on("opponent:reconnected", (data) => onOppReconnect?.(data));
     socket.on("room:expired", (data) => onOppDisconnect?.(data)); // treat as pause signal
+    socket.on("resign:requested", (data) => onResignRequested?.(data));
+    socket.on("resign:pending", (data) => onResignPending?.(data));
+    socket.on("resign:declined", (data) => onResignDeclined?.(data));
+    socket.on("resign:cancelled", (data) => onResignCancelled?.(data));
+    socket.on("resign:expired", (data) => onResignExpired?.(data));
+    socket.on("leave:cooldown", (data) => onLeaveCooldown?.(data));
     // Quiet: don't spam the console with reconnect errors.
     socket.on("connect_error", () => {});
     socket.io.on("reconnect_error", () => {});
@@ -62,7 +74,19 @@ export function createMatchSocket({
       ensure().emit("match:notes", { matchId, userId, notes });
     },
     resign(matchId, userId) {
-      ensure().emit("match:resign", { matchId, userId });
+      ensure().emit("match:resign:request", { matchId, userId });
+    },
+    requestResign(matchId, userId) {
+      ensure().emit("match:resign:request", { matchId, userId });
+    },
+    acceptResign(matchId, userId) {
+      ensure().emit("match:resign:accept", { matchId, userId });
+    },
+    declineResign(matchId, userId) {
+      ensure().emit("match:resign:decline", { matchId, userId });
+    },
+    leaveMatch(matchId, userId) {
+      ensure().emit("match:leave", { matchId, userId });
     },
     destroy() {
       if (socket) {

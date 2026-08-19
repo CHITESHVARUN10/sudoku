@@ -24,4 +24,10 @@ function newRatings(winnerElo, loserElo, k = K) {
   };
 }
 
-module.exports = { eloDelta, newRatings, expectedScore };
+function leavePenalty(winnerScore, loserScore) {
+  const gap = Math.max(0, winnerScore - loserScore);
+  const raw = 10 + Math.floor(gap / 10);
+  return Math.min(30, raw);
+}
+
+module.exports = { eloDelta, newRatings, expectedScore, leavePenalty };

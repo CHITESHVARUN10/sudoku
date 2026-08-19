@@ -112,7 +112,7 @@ async function recordGame({ userId, mode, difficulty, opponentId, opponentName, 
 }
 
 // Record a completed multiplayer match (call from match:end).
-async function recordMatchResult(match, { winnerUserId, loserUserId, winnerElo, loserElo, eloDelta, timeSec, movesCount, difficulty }) {
+async function recordMatchResult(match, { winnerUserId, loserUserId, winnerElo, loserElo, eloDelta, loserEloDelta, timeSec, movesCount, difficulty }) {
   const results = [];
 
   // Credit each player their OWN seat score, not p1's score for both.
@@ -162,7 +162,7 @@ async function recordMatchResult(match, { winnerUserId, loserUserId, winnerElo, 
       movesCount,
       mistakes: loserMistakes,
       score: loserScore,
-      eloDelta: -eloDelta,
+      eloDelta: -(loserEloDelta != null ? loserEloDelta : eloDelta),
       powerUpsUsed: 0,
       matchId: match._id,
     })

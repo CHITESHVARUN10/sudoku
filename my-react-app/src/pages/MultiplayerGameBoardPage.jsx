@@ -14,6 +14,11 @@ function formatClock(sec) {
   return `${m}:${s}`;
 }
 
+function leavePenaltyPreview(winnerScore, loserScore) {
+  const gap = Math.max(0, winnerScore - loserScore);
+  return Math.min(30, 10 + Math.floor(gap / 10));
+}
+
 function MultiplayerGameBoardPage() {
   const { user } = useAuth();
   const location = useLocation();
@@ -29,12 +34,16 @@ function MultiplayerGameBoardPage() {
     oppDisconnected,
     result,
     lastError,
+    resignState,
     joinRoom,
     rejoinMatch,
     sendMove,
     sendPowerUp,
     sendNotes,
-    resign,
+    requestResign,
+    acceptResign,
+    declineResign,
+    leaveMatch,
   } = useSocket();
 
   const [selected, setSelected] = useState(null);
@@ -43,8 +52,9 @@ function MultiplayerGameBoardPage() {
   const [notes, setNotes] = useState(() => Array.from({ length: 81 }, () => []));
   const [syncError, setSyncError] = useState("");
   const [noMatch, setNoMatch] = useState(false);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const [leaveCountdown, setLeaveCountdown] = useState(0);
 
-  // Figure out which seat we are (handles host and guest, and rejoins).
   const myIndex =
     match?.players && user?._id
       ? String(match.players[0]?._id) === String(user._id)
@@ -56,15 +66,35 @@ function MultiplayerGameBoardPage() {
   const me = match?.players?.[myIndex]?.name || user?.name || "You";
   const opponentName =
     match?.players?.[1 - myIndex]?.name || "Opponent";
-  // Absolute seat number for this viewer: 1 (host/p1) or 2 (guest/p2).
-  // Move history entries carry the absolute player number, so columns must be
-  // mapped by seat — NOT by display position — or the opponent's moves get
-  // credited to us.
   const mySeat = myIndex === 0 ? 1 : 2;
   const oppSeat = mySeat === 1 ? 2 : 1;
 
-  // Load this player's persisted notes once when the match first arrives
-  // (start/rejoin). Don't overwrite local edits on every server echo.
+  const pendingBySeat = resignState?.by ?? match?.resignRequestedBy ?? null;
+  const isIncomingResign = pendingBySeat != null && pendingBySeat !== mySeat && !!pendingBySeat;
+  const isOutgoingResign = pendingBySeat === mySeat;
+  const hasPendingResign = pendingBySeat != null;
+
+  const myScore = match?.scores?.[mySeat === 1 ? "p1" : "p2"] ?? 0;
+  const oppScore = match?.scores?.[mySeat === 1 ? "p2" : "p1"] ?? 0;
+  const predictedLeavePenalty = leavePenaltyPreview(oppScore, myScore);
+
+  useEffect(() => {
+    if (!match?.startedAt || match?.status !== "active") {
+      setLeaveCountdown(0);
+      return;
+    }
+    const tick = () => {
+      const elapsed = (Date.now() - new Date(match.startedAt).getTime()) / 1000;
+      const remaining = Math.max(0, Math.ceil(30 - elapsed));
+      setLeaveCountdown(remaining);
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [match?.startedAt, match?.status]);
+
+  const canLeave = leaveCountdown === 0;
+
   const loadedNotesForMatch = useRef(null);
   useEffect(() => {
     if (!match?.notes || !match?.matchId) return;
@@ -77,7 +107,6 @@ function MultiplayerGameBoardPage() {
     }
   }, [match?.matchId, myIndex, match?.notes]);
 
-  // Push local note changes to the server (debounced).
   const notesRef = useRef(notes);
   notesRef.current = notes;
   useEffect(() => {
@@ -88,22 +117,16 @@ function MultiplayerGameBoardPage() {
     return () => clearTimeout(t);
   }, [notes, match?.matchId, sendNotes]);
 
-  // Join / rejoin / resync when the page mounts.
   useEffect(() => {
     if (!user?._id) {
       setSyncError("Sign in to play multiplayer.");
       return;
     }
-
-    // Rejoin an explicit match (Rejoin Match button, or a fresh reload that
-    // already knows the match id).
     if (matchIdFromState) {
       rejoinMatch(matchIdFromState, user._id);
       return;
     }
-
     if (roomCodeFromState) {
-      // Fresh page load with a room code: try to find a live match first.
       let cancelled = false;
       fetchActiveMatch()
         .then((m) => {
@@ -112,7 +135,6 @@ function MultiplayerGameBoardPage() {
             rejoinMatch(m._id, user._id);
             return;
           }
-          // No match yet — join the room (host waiting / guest just joined).
           joinRoom(roomCodeFromState, user._id);
           let attempts = 0;
           const poll = async () => {
@@ -144,8 +166,6 @@ function MultiplayerGameBoardPage() {
         cancelled = true;
       };
     }
-
-    // Direct URL — look for an active match.
     let cancelled = false;
     fetchActiveMatch()
       .then((m) => {
@@ -169,8 +189,6 @@ function MultiplayerGameBoardPage() {
     fetchActiveMatch,
   ]);
 
-  // Live clocks: server-authoritative values re-synced on every match state,
-  // with a smooth 1s local ticker in between (race-style, no turns).
   const [clocks, setClocks] = useState({ p1: null, p2: null });
 
   useEffect(() => {
@@ -194,12 +212,8 @@ function MultiplayerGameBoardPage() {
     return () => clearInterval(interval);
   }, [matchStatus, matchIdNow]);
 
-  // Simultaneous play: both players can act at any time while the match is active.
   const canAct = connected && match?.status === "active";
 
-  // Race mode: each player sees ONLY their own board. A cell is locked
-  // (immutable) when the server says 'locked' (correct). 'wrong' cells on
-  // your board can be retried; 'given' cells are clues. No shared ownership.
   const isLockedForMe = (idx) => {
     const s = match?.cellStatus?.[idx];
     return s === "given" || s === "locked";
@@ -208,7 +222,6 @@ function MultiplayerGameBoardPage() {
   const handleCellClick = (index) => {
     if (!canAct) return;
     if (isLockedForMe(index)) return;
-    // If a power-up is armed, clicking a cell applies it directly.
     if (powerUpArmed) {
       sendPowerUp(index);
       setPowerUpArmed(false);
@@ -230,8 +243,6 @@ function MultiplayerGameBoardPage() {
         next[selected] = [...set].sort();
         return next;
       });
-      // One note placed -> exit notes mode so the next press writes a real
-      // value (no accidental pencil marks).
       setNotesMode(false);
       return;
     }
@@ -256,7 +267,12 @@ function MultiplayerGameBoardPage() {
   };
 
   const handleResign = () => {
-    resign();
+    requestResign();
+  };
+
+  const handleLeaveConfirm = () => {
+    setShowLeaveConfirm(false);
+    leaveMatch();
   };
 
   const grid = match?.board || [];
@@ -265,12 +281,9 @@ function MultiplayerGameBoardPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-paper-white text-ink-black font-body-md text-body-md antialiased">
-      {/* Shared Navbar */}
       <Navbar />
 
-      {/* Main Content Canvas */}
       <main className="flex-1 w-full max-w-7xl mx-auto px-4 md:px-margin-lg py-8 md:py-12 flex flex-col">
-        {/* Match Header */}
         <div className="w-full border-b border-ink-black pb-4 mb-8 flex justify-between items-end">
           <div className="flex items-center gap-3">
             <span className="font-headline-sm text-headline-sm font-bold px-3 py-1 border-2 border-ink-black text-ink-black">
@@ -325,7 +338,6 @@ function MultiplayerGameBoardPage() {
           </div>
         </div>
 
-        {/* Connection banners */}
         {noMatch && (
           <div
             className="mb-4 border-2 border-ink-black bg-surface-variant p-3 font-label-mono text-label-mono uppercase tracking-widest text-ink-black"
@@ -370,18 +382,41 @@ function MultiplayerGameBoardPage() {
             Opponent disconnected — their clock is paused.
           </div>
         )}
+        {isOutgoingResign && match?.status === "active" && (
+          <div
+            className="mb-4 border-2 border-ink-black bg-surface-variant p-3 font-label-mono text-label-mono uppercase tracking-widest text-ink-black flex items-center justify-between"
+            role="status"
+          >
+            <span>Resign request sent — waiting for opponent to accept…</span>
+            <button
+              onClick={() => declineResign()}
+              className="ml-4 underline hover:text-error-red"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
         {result && (
           <div
             className="mb-4 border-2 border-ink-black bg-ink-black text-paper-white p-4 font-label-mono text-label-mono uppercase tracking-widest"
             role="status"
           >
-            {result.winner === myIndex + 1 ? "You win" : "You lose"} —{" "}
-            {result.reason}
-            {result.eloDelta
-              ? ` · Elo ${
-                  result.winner === myIndex + 1 ? "+" : "−"
-                }${result.eloDelta}`
-              : ""}
+            {result.winner == null
+              ? "Draw"
+              : result.winner === myIndex + 1
+              ? "You win"
+              : "You lose"}{" "}
+            — {result.reason}
+            {result.eloDelta || result.eloDeltaLoser ? (
+              <>
+                {" · Elo "}
+                {result.winner == null
+                  ? "—"
+                  : result.winner === myIndex + 1
+                  ? `+${result.eloDelta}`
+                  : `−${result.eloDeltaLoser || result.eloDelta}`}
+              </>
+            ) : null}
             <Link
               to="/multiplayer"
               className="ml-4 underline hover:text-ink-blue"
@@ -391,9 +426,7 @@ function MultiplayerGameBoardPage() {
           </div>
         )}
 
-        {/* Game Area Layout */}
         <div className="flex flex-col lg:flex-row gap-margin-lg items-start justify-center">
-          {/* The Board */}
           <div
             className="mp-sudoku-grid mx-auto lg:mx-0"
             role="grid"
@@ -401,12 +434,10 @@ function MultiplayerGameBoardPage() {
           >
             {Array.from({ length: 81 }, (_, index) => {
               const value = grid[index];
-              const status = cellStatus[index]; // race: given|locked|wrong|null
+              const status = cellStatus[index];
               const isGhost = ghost[index] === true;
               const notesSet = notes[index] || [];
               const isSelected = selected === index;
-              // Ghost '?' is a view-only hint: opponent solved correctly, you haven't.
-              // Your own board is still null there, so you can still place a value.
               const cls = `mp-sudoku-cell ${status || ""} ${
                 isGhost && value == null ? "ghost" : ""
               } ${isSelected ? "selected" : ""}`;
@@ -438,9 +469,7 @@ function MultiplayerGameBoardPage() {
             })}
           </div>
 
-          {/* Controls & Log Sidebar */}
           <div className="flex flex-col gap-margin-md w-full max-w-sm mx-auto lg:mx-0">
-            {/* Numpad */}
             <div className="grid grid-cols-3 gap-0 w-fit border border-ink-black">
               {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((num, i) => (
                 <button
@@ -455,8 +484,7 @@ function MultiplayerGameBoardPage() {
               ))}
             </div>
 
-            {/* Tool Actions */}
-            <div className="flex gap-4 border-b border-ink-black pb-4">
+            <div className="flex gap-4 border-b border-ink-black pb-4 flex-wrap">
               <button
                 className={`flex items-center gap-2 font-label-mono text-[14px] transition-colors px-2 py-1 ${
                   notesMode
@@ -500,16 +528,25 @@ function MultiplayerGameBoardPage() {
                 Erase
               </button>
               <button
-                className="flex items-center gap-2 text-error-red hover:text-ink-black font-label-mono text-[14px]"
+                className="flex items-center gap-2 text-ink-black hover:text-ink-blue font-label-mono text-[14px] disabled:opacity-40 disabled:cursor-not-allowed"
                 onClick={handleResign}
-                disabled={!match || match.status !== "active"}
+                disabled={!match || match.status !== "active" || hasPendingResign}
+                title={hasPendingResign ? "Resign already pending" : "Request mutual resign — higher score wins"}
               >
                 <span className="material-symbols-outlined text-[20px]">flag</span>
                 Resign
               </button>
+              <button
+                className="flex items-center gap-2 text-error-red hover:text-ink-black font-label-mono text-[14px] disabled:opacity-40 disabled:cursor-not-allowed"
+                onClick={() => setShowLeaveConfirm(true)}
+                disabled={!match || match.status !== "active"}
+                title={!canLeave ? `Leave available in ${leaveCountdown}s` : `Leave now: −${predictedLeavePenalty} Elo (opponent +standard)`}
+              >
+                <span className="material-symbols-outlined text-[20px]">logout</span>
+                {canLeave ? "Leave" : `Leave (${leaveCountdown}s)`}
+              </button>
             </div>
 
-            {/* Mode indicator: always tell the player what the next press does */}
             <div className="flex items-center gap-2 font-label-mono text-[12px] uppercase tracking-widest">
               <AnimatePresence mode="wait" initial={false}>
                 {notesMode ? (
@@ -552,7 +589,6 @@ function MultiplayerGameBoardPage() {
               </AnimatePresence>
             </div>
 
-            {/* Move History Log */}
             <div className="flex flex-col border border-ink-black h-64 bg-paper-white">
               <div className="grid grid-cols-2 border-b border-ink-black font-label-mono text-[12px] uppercase tracking-wider bg-surface-container-highest">
                 <div className="p-2 border-r border-ink-black text-center font-bold">
@@ -567,8 +603,6 @@ function MultiplayerGameBoardPage() {
                       (entry.cell % 9) + 1
                     }`;
                     const isMine = entry.player === mySeat;
-                    // Only show the opponent WHICH cell they marked — never the
-                    // value or whether it was right/wrong (that leaks info).
                     const text = isMine
                       ? `${cellLabel} → ${entry.value}${
                           entry.isPowerUp ? " ⚡" : ""
@@ -602,6 +636,106 @@ function MultiplayerGameBoardPage() {
           </div>
         </div>
       </main>
+
+      <AnimatePresence>
+        {isIncomingResign && match?.status === "active" && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-ink-black/60 p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.96, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.96, opacity: 0 }}
+              className="w-full max-w-md bg-paper-white border-2 border-ink-black p-6"
+            >
+              <h2 className="font-headline-sm text-headline-sm font-bold mb-2">
+                Opponent wants to resign
+              </h2>
+              <p className="font-label-mono text-[13px] leading-relaxed text-secondary mb-4">
+                {opponentName} requested a mutual resign. If you accept, the
+                player with the higher score wins.
+                <br />
+                <span className="text-ink-black">
+                  Current: You {myScore} — Opp {oppScore}
+                </span>
+                <br />
+                <span className="text-[11px]">Expires in 60s · Tie-break: fewer mistakes → more clock</span>
+              </p>
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => declineResign()}
+                  className="px-4 py-2 border-2 border-ink-black font-label-mono text-[13px] uppercase tracking-widest hover:bg-surface-variant"
+                >
+                  Decline
+                </button>
+                <button
+                  onClick={() => acceptResign()}
+                  className="px-4 py-2 bg-ink-black text-paper-white font-label-mono text-[13px] uppercase tracking-widest hover:bg-ink-blue"
+                >
+                  Accept
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showLeaveConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-ink-black/60 p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.96, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.96, opacity: 0 }}
+              className="w-full max-w-md bg-paper-white border-2 border-ink-black p-6"
+            >
+              <h2 className="font-headline-sm text-headline-sm font-bold mb-2">
+                Leave match?
+              </h2>
+              <p className="font-label-mono text-[13px] leading-relaxed text-secondary mb-4">
+                Leaving ends the match immediately. Your opponent wins.
+                <br />
+                <span className="text-error-red">
+                  Penalty: −{predictedLeavePenalty} Elo
+                </span>{" "}
+                <span className="text-secondary">(10 + 1 per 10pt deficit, capped at 30).</span>
+                <br />
+                <span className="text-ink-black">
+                  You {myScore} — Opp {oppScore}
+                </span>
+                {!canLeave && (
+                  <span className="block mt-2 text-ink-black">
+                    You can leave in {leaveCountdown}s.
+                  </span>
+                )}
+              </p>
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => setShowLeaveConfirm(false)}
+                  className="px-4 py-2 border-2 border-ink-black font-label-mono text-[13px] uppercase tracking-widest hover:bg-surface-variant"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleLeaveConfirm}
+                  disabled={!canLeave}
+                  className="px-4 py-2 bg-error-red text-paper-white font-label-mono text-[13px] uppercase tracking-widest hover:bg-ink-black disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Leave
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -6,7 +6,7 @@ const { sessionMiddleware } = require('../middleware/session');
 const { generatePuzzle } = require('./sudokuGenerator');
 const { applyMove } = require('./scoring');
 const { usePowerUp } = require('./powerUps');
-const { newRatings } = require('./elo');
+const { newRatings, leavePenalty } = require('./elo');
 const { recordMatchResult } = require('./stats');
 
 // Map from room code -> set of connected user IDs (for presence / reconnect).
@@ -164,6 +164,9 @@ function buildStatePayload(match, players, viewerSeat) {
     powerUpsMax: match.powerUpsMax,
     clocks: match.clocks,
     status: match.status,
+    resignRequestedBy: match.resignRequestedBy || null,
+    resignRequestedAt: match.resignRequestedAt || null,
+    startedAt: match.startedAt || null,
   };
 }
 
@@ -213,6 +216,9 @@ async function emitMatchState(io, match) {
     powerUpsLeft: match.powerUpsLeft,
     clocks: match.clocks,
     status: match.status,
+    resignRequestedBy: match.resignRequestedBy || null,
+    resignRequestedAt: match.resignRequestedAt || null,
+    startedAt: match.startedAt || null,
   };
   for (const seat of [1, 2]) {
     const ownBoard = boardForSeat(match, seat);
@@ -238,15 +244,46 @@ async function emitMatchState(io, match) {
   }
 }
 
+function decideResignWinner(match) {
+  const s1 = match.scores?.p1 ?? 0;
+  const s2 = match.scores?.p2 ?? 0;
+  if (s1 > s2) return 1;
+  if (s2 > s1) return 2;
+  const m1 = match.mistakes?.p1 ?? 0;
+  const m2 = match.mistakes?.p2 ?? 0;
+  if (m1 < m2) return 1;
+  if (m2 < m1) return 2;
+  const c1 = match.clocks?.p1 ?? 0;
+  const c2 = match.clocks?.p2 ?? 0;
+  if (c1 > c2) return 1;
+  if (c2 > c1) return 2;
+  return null;
+}
+
+function isResignExpired(match) {
+  if (!match.resignRequestedAt) return false;
+  return Date.now() - new Date(match.resignRequestedAt).getTime() > 60000;
+}
+
+async function clearResignRequest(match, io) {
+  match.resignRequestedBy = null;
+  match.resignRequestedAt = null;
+  await match.save();
+  await emitMatchState(io, match);
+}
+
 // End the match: set status, winner, elo deltas, notify players.
-async function endMatch(io, match, winnerPlayer, reason) {
+async function endMatch(io, match, winnerPlayer, reason, opts = {}) {
   if (match.status !== 'active') return;
 
   match.status = 'completed';
   match.completedAt = new Date();
-  match.winner = winnerPlayer === 1 ? match.player1 : match.player2;
+  match.winner = winnerPlayer ? (winnerPlayer === 1 ? match.player1 : match.player2) : null;
+  match.resignRequestedBy = null;
+  match.resignRequestedAt = null;
 
-  // ELO only counts for completed matches with a winner.
+  let winnerDelta = 0;
+  let loserDelta = 0;
   if (winnerPlayer) {
     const [p1, p2] = await Promise.all([
       User.findById(match.player1),
@@ -254,30 +291,44 @@ async function endMatch(io, match, winnerPlayer, reason) {
     ]);
     if (p1 && p2) {
       const { delta } = newRatings(p1.elo, p2.elo);
-      match.eloDelta = delta;
-      p1.elo = winnerPlayer === 1 ? p1.elo + delta : p1.elo - delta;
-      p2.elo = winnerPlayer === 2 ? p2.elo + delta : p2.elo - delta;
+      winnerDelta = opts.winnerDelta != null ? opts.winnerDelta : delta;
+      loserDelta = opts.loserDelta != null ? opts.loserDelta : delta;
+      match.eloDelta = winnerDelta;
+      match.eloDeltaLoser = loserDelta;
+      if (winnerPlayer === 1) {
+        p1.elo += winnerDelta;
+        p2.elo = Math.max(0, p2.elo - loserDelta);
+      } else {
+        p2.elo += winnerDelta;
+        p1.elo = Math.max(0, p1.elo - loserDelta);
+      }
       await Promise.all([p1.save(), p2.save()]);
     }
+  } else {
+    match.eloDelta = 0;
+    match.eloDeltaLoser = 0;
   }
 
   await match.save();
 
   // Record history + stats + leaderboard for both players.
   try {
-    const winnerUserId = winnerPlayer === 1 ? match.player1 : match.player2;
-    const loserUserId = winnerPlayer === 2 ? match.player1 : match.player2;
-    const timeSec = match.startedAt
-      ? Math.max(0, Math.round((new Date() - new Date(match.startedAt)) / 1000))
-      : 0;
-    await recordMatchResult(match, {
-      winnerUserId,
-      loserUserId,
-      eloDelta: match.eloDelta,
-      timeSec,
-      movesCount: match.moveHistory.length,
-      difficulty: match.difficulty,
-    });
+    if (winnerPlayer) {
+      const winnerUserId = winnerPlayer === 1 ? match.player1 : match.player2;
+      const loserUserId = winnerPlayer === 2 ? match.player1 : match.player2;
+      const timeSec = match.startedAt
+        ? Math.max(0, Math.round((new Date() - new Date(match.startedAt)) / 1000))
+        : 0;
+      await recordMatchResult(match, {
+        winnerUserId,
+        loserUserId,
+        eloDelta: winnerDelta,
+        loserEloDelta: loserDelta,
+        timeSec,
+        movesCount: match.moveHistory.length,
+        difficulty: match.difficulty,
+      });
+    }
   } catch (err) {
     console.error('recordMatchResult error:', err);
   }
@@ -287,7 +338,8 @@ async function endMatch(io, match, winnerPlayer, reason) {
     reason,
     scores: match.scores,
     mistakes: match.mistakes,
-    eloDelta: match.eloDelta,
+    eloDelta: winnerDelta,
+    eloDeltaLoser: loserDelta,
   });
 
   await Room.updateOne({ _id: match.room }, { status: 'started' });
@@ -730,26 +782,147 @@ function attachSocket(server) {
     });
 
     socket.on('match:resign', async ({ matchId, userId }) => {
-      try {
-        const authedId = socketUserId(socket);
-        if (!authedId || String(authedId) !== String(userId)) {
-          socket.emit('error', { message: 'Not authenticated.' });
-          return;
+      socket.emit('error', { message: 'Resign now requires opponent confirmation. Use the Resign button.' });
+    });
+
+    socket.on('match:resign:request', ({ matchId, userId }) => {
+      enqueueMatchOp(matchId, async () => {
+        try {
+          const authedId = socketUserId(socket);
+          if (!authedId || String(authedId) !== String(userId)) {
+            socket.emit('error', { message: 'Not authenticated.' });
+            return;
+          }
+          const match = await Match.findById(matchId);
+          if (!match || match.status !== 'active') return;
+          const player =
+            String(match.player1) === String(userId) ? 1 : String(match.player2) === String(userId) ? 2 : 0;
+          if (!player) return;
+          if (match.resignRequestedBy && !isResignExpired(match)) {
+            socket.emit('error', { message: 'A resign request is already pending.' });
+            return;
+          }
+          if (isResignExpired(match)) {
+            match.resignRequestedBy = null;
+            match.resignRequestedAt = null;
+          }
+          match.resignRequestedBy = player;
+          match.resignRequestedAt = new Date();
+          await match.save();
+          const opponentId = player === 1 ? match.player2 : match.player1;
+          io.to(`user:${opponentId}`).emit('resign:requested', {
+            by: player,
+            scores: match.scores,
+            requestedAt: match.resignRequestedAt,
+          });
+          socket.emit('resign:pending', { by: player });
+          await emitMatchState(io, match);
+        } catch (err) {
+          console.error('match:resign:request error:', err);
         }
-        const match = await Match.findById(matchId);
-        if (!match || match.status !== 'active') return;
-        const player =
-          String(match.player1) === String(userId)
-            ? 1
-            : String(match.player2) === String(userId)
-            ? 2
-            : 0;
-        if (!player) return;
-        const winner = player === 1 ? 2 : 1;
-        await endMatch(io, match, winner, 'resign');
-      } catch (err) {
-        console.error('match:resign error:', err);
-      }
+      });
+    });
+
+    socket.on('match:resign:accept', ({ matchId, userId }) => {
+      enqueueMatchOp(matchId, async () => {
+        try {
+          const authedId = socketUserId(socket);
+          if (!authedId || String(authedId) !== String(userId)) {
+            socket.emit('error', { message: 'Not authenticated.' });
+            return;
+          }
+          const match = await Match.findById(matchId);
+          if (!match || match.status !== 'active') return;
+          const player =
+            String(match.player1) === String(userId) ? 1 : String(match.player2) === String(userId) ? 2 : 0;
+          if (!player) return;
+          if (!match.resignRequestedBy) {
+            socket.emit('error', { message: 'No resign request pending.' });
+            return;
+          }
+          if (isResignExpired(match)) {
+            match.resignRequestedBy = null;
+            match.resignRequestedAt = null;
+            await match.save();
+            io.to(`match:${matchId}`).emit('resign:expired', {});
+            await emitMatchState(io, match);
+            return;
+          }
+          if (match.resignRequestedBy === player) {
+            socket.emit('error', { message: 'You cannot accept your own resign request.' });
+            return;
+          }
+          const fresh = await Match.findById(matchId);
+          const winner = decideResignWinner(fresh);
+          await endMatch(io, fresh, winner, 'resign');
+        } catch (err) {
+          console.error('match:resign:accept error:', err);
+        }
+      });
+    });
+
+    socket.on('match:resign:decline', ({ matchId, userId }) => {
+      enqueueMatchOp(matchId, async () => {
+        try {
+          const authedId = socketUserId(socket);
+          if (!authedId || String(authedId) !== String(userId)) {
+            socket.emit('error', { message: 'Not authenticated.' });
+            return;
+          }
+          const match = await Match.findById(matchId);
+          if (!match || match.status !== 'active') return;
+          const player =
+            String(match.player1) === String(userId) ? 1 : String(match.player2) === String(userId) ? 2 : 0;
+          if (!player) return;
+          if (!match.resignRequestedBy) return;
+          if (match.resignRequestedBy === player) {
+            match.resignRequestedBy = null;
+            match.resignRequestedAt = null;
+            await match.save();
+            io.to(`match:${matchId}`).emit('resign:cancelled', { by: player });
+            await emitMatchState(io, match);
+            return;
+          }
+          match.resignRequestedBy = null;
+          match.resignRequestedAt = null;
+          await match.save();
+          io.to(`match:${matchId}`).emit('resign:declined', { by: player });
+          await emitMatchState(io, match);
+        } catch (err) {
+          console.error('match:resign:decline error:', err);
+        }
+      });
+    });
+
+    socket.on('match:leave', ({ matchId, userId }) => {
+      enqueueMatchOp(matchId, async () => {
+        try {
+          const authedId = socketUserId(socket);
+          if (!authedId || String(authedId) !== String(userId)) {
+            socket.emit('error', { message: 'Not authenticated.' });
+            return;
+          }
+          const match = await Match.findById(matchId);
+          if (!match || match.status !== 'active') return;
+          const player =
+            String(match.player1) === String(userId) ? 1 : String(match.player2) === String(userId) ? 2 : 0;
+          if (!player) return;
+          const elapsed = match.startedAt ? (Date.now() - new Date(match.startedAt).getTime()) / 1000 : 999;
+          if (elapsed < 30) {
+            socket.emit('error', { message: `You can leave after 30 seconds. ${Math.ceil(30 - elapsed)}s remaining.` });
+            io.to(`user:${userId}`).emit('leave:cooldown', { remaining: Math.ceil(30 - elapsed) });
+            return;
+          }
+          const winner = player === 1 ? 2 : 1;
+          const winnerScore = winner === 1 ? match.scores?.p1 ?? 0 : match.scores?.p2 ?? 0;
+          const loserScore = player === 1 ? match.scores?.p1 ?? 0 : match.scores?.p2 ?? 0;
+          const loserDelta = leavePenalty(winnerScore, loserScore);
+          const fresh = await Match.findById(matchId);
+          await endMatch(io, fresh, winner, 'leave', { loserDelta });
+        } catch (err) {
+          console.error('match:leave error:', err);
+        }
+      });
     });
 
     // On disconnect, update presence; if the player has no sockets left,
@@ -808,6 +981,13 @@ function attachSocket(server) {
         await enqueueMatchOp(match._id, async () => {
           const fresh = await Match.findById(match._id);
           if (!fresh || fresh.status !== 'active') return;
+          if (fresh.resignRequestedBy && isResignExpired(fresh)) {
+            fresh.resignRequestedBy = null;
+            fresh.resignRequestedAt = null;
+            await fresh.save();
+            io.to(`match:${fresh._id}`).emit('resign:expired', {});
+            await emitMatchState(io, fresh);
+          }
           const before = { ...fresh.clocks };
           const ended = await tickClocks(io, fresh);
           if (ended) return;

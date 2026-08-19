@@ -21,6 +21,8 @@ export function SocketProvider({ children }) {
   const [oppDisconnected, setOppDisconnected] = useState(false);
   const [result, setResult] = useState(null);
   const [lastError, setLastError] = useState("");
+  const [resignState, setResignState] = useState(null);
+  const [leaveCooldown, setLeaveCooldown] = useState(0);
   const [roomCode, setRoomCode] = useState(null);
   const [userId, setUserId] = useState(null);
 
@@ -82,6 +84,12 @@ export function SocketProvider({ children }) {
       onError: (message) => setLastError(message || "Server error."),
       onOppDisconnect: () => setOppDisconnected(true),
       onOppReconnect: () => setOppDisconnected(false),
+      onResignRequested: (data) => setResignState({ incoming: true, by: data.by, scores: data.scores }),
+      onResignPending: (data) => setResignState({ incoming: false, by: data.by }),
+      onResignDeclined: () => { setResignState(null); setLastError("Resign declined by opponent."); },
+      onResignCancelled: () => setResignState(null),
+      onResignExpired: () => { setResignState(null); setLastError("Resign request expired."); },
+      onLeaveCooldown: (data) => setLeaveCooldown(data.remaining || 0),
     });
     socketRef.current = socket;
     return () => socket.destroy();
@@ -137,8 +145,36 @@ export function SocketProvider({ children }) {
   const resign = useCallback(() => {
     const mid = sessionRef.current.matchId;
     const uid = sessionRef.current.userId;
-    if (mid && uid) socketRef.current?.resign(mid, uid);
+    if (mid && uid) socketRef.current?.requestResign(mid, uid);
   }, []);
+
+  const requestResign = useCallback(() => {
+    const mid = sessionRef.current.matchId;
+    const uid = sessionRef.current.userId;
+    if (mid && uid) socketRef.current?.requestResign(mid, uid);
+  }, []);
+
+  const acceptResign = useCallback(() => {
+    const mid = sessionRef.current.matchId;
+    const uid = sessionRef.current.userId;
+    if (mid && uid) socketRef.current?.acceptResign(mid, uid);
+  }, []);
+
+  const declineResign = useCallback(() => {
+    const mid = sessionRef.current.matchId;
+    const uid = sessionRef.current.userId;
+    if (mid && uid) socketRef.current?.declineResign(mid, uid);
+  }, []);
+
+  const leaveMatch = useCallback(() => {
+    const mid = sessionRef.current.matchId;
+    const uid = sessionRef.current.userId;
+    if (mid && uid) socketRef.current?.leaveMatch(mid, uid);
+  }, []);
+
+  const clearResignState = useCallback(() => setResignState(null), []);
+  const clearLastError = useCallback(() => setLastError(""), []);
+  const clearLeaveCooldown = useCallback(() => setLeaveCooldown(0), []);
 
   const value = {
     match,
@@ -147,6 +183,8 @@ export function SocketProvider({ children }) {
     oppDisconnected,
     result,
     lastError,
+    resignState,
+    leaveCooldown,
     roomCode,
     joinRoom,
     rejoinMatch,
@@ -154,6 +192,13 @@ export function SocketProvider({ children }) {
     sendPowerUp,
     sendNotes,
     resign,
+    requestResign,
+    acceptResign,
+    declineResign,
+    leaveMatch,
+    clearResignState,
+    clearLastError,
+    clearLeaveCooldown,
   };
 
   return <SocketContext.Provider value={value}>{children}</SocketContext.Provider>;
