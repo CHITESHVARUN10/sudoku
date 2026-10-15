@@ -42,7 +42,7 @@ const gameHistorySchema = new Schema(
     },
     result: {
       type: String,
-      enum: ['Win', 'Loss', 'Solved', 'Abandoned'],
+      enum: ['Win', 'Loss', 'Solved', 'Completed', 'Abandoned'],
       required: true,
     },
     // Duration in seconds; frontend displays as MM:SS

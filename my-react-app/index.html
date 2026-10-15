@@ -15,6 +15,18 @@
       rel="stylesheet"
     />
     <title>SUDOKU ARENA - The Art of the Logical Grid</title>
+    <script>
+      // Apply the persisted theme before first paint (no dark-mode flash).
+      try {
+        var t = localStorage.getItem("theme");
+        if (
+          t === "dark" ||
+          (!t && window.matchMedia("(prefers-color-scheme: dark)").matches)
+        ) {
+          document.documentElement.classList.add("dark");
+        }
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

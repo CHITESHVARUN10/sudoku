@@ -6,6 +6,7 @@ import { useSocket } from "../contexts/SocketContext";
 import { useRoom } from "../contexts/RoomContext";
 import { useMatch } from "../contexts/MatchContext";
 import Navbar from "../components/Navbar";
+import useKeyboardSudoku from "../hooks/useKeyboardSudoku";
 
 function formatClock(sec) {
   if (sec == null || sec <= 0) return "--:--";
@@ -47,6 +48,7 @@ function MultiplayerGameBoardPage() {
   } = useSocket();
 
   const [selected, setSelected] = useState(null);
+  const [lastCell, setLastCell] = useState(null);
   const [notesMode, setNotesMode] = useState(false);
   const [powerUpArmed, setPowerUpArmed] = useState(false);
   const [notes, setNotes] = useState(() => Array.from({ length: 81 }, () => []));
@@ -214,9 +216,11 @@ function MultiplayerGameBoardPage() {
 
   const canAct = connected && match?.status === "active";
 
+  // Answers are permanent: given, correct (locked) AND wrong cells all reject
+  // new input — the server enforces this too.
   const isLockedForMe = (idx) => {
     const s = match?.cellStatus?.[idx];
-    return s === "given" || s === "locked";
+    return s === "given" || s === "locked" || s === "wrong";
   };
 
   const handleCellClick = (index) => {
@@ -229,6 +233,7 @@ function MultiplayerGameBoardPage() {
       return;
     }
     setSelected(index);
+    setLastCell(index);
   };
 
   const handleNumpad = (value) => {
@@ -274,6 +279,41 @@ function MultiplayerGameBoardPage() {
     setShowLeaveConfirm(false);
     leaveMatch();
   };
+
+  // Keyboard controls: digits 1-9, Backspace/Delete/0 to erase notes,
+  // arrows to move, Enter re-selects the previous cell, N/Space notes, Esc.
+  const moveSelection = (dir) => {
+    if (selected == null) return;
+    const row = Math.floor(selected / 9);
+    const col = selected % 9;
+    let next = null;
+    if (dir === "up" && row > 0) next = selected - 9;
+    else if (dir === "down" && row < 8) next = selected + 9;
+    else if (dir === "left" && col > 0) next = selected - 1;
+    else if (dir === "right" && col < 8) next = selected + 1;
+    if (next != null) setSelected(next);
+  };
+
+  const handleKeyboardEnter = () => {
+    if (selected == null && lastCell != null && !isLockedForMe(lastCell)) {
+      setSelected(lastCell);
+    }
+  };
+
+  const handleKeyboardEscape = () => {
+    if (powerUpArmed) setPowerUpArmed(false);
+    setSelected(null);
+  };
+
+  useKeyboardSudoku({
+    onDigit: handleNumpad,
+    onErase: handleErase,
+    onArrow: moveSelection,
+    onEnter: handleKeyboardEnter,
+    onToggleNotes: () => setNotesMode((m) => !m),
+    onEscape: handleKeyboardEscape,
+    enabled: canAct && (match?.board || []).length === 81,
+  });
 
   const grid = match?.board || [];
   const cellStatus = match?.cellStatus || [];

@@ -116,7 +116,7 @@ const gameSchema = new Schema(
     },
     status: {
       type: String,
-      enum: ['active', 'paused', 'solved', 'abandoned'],
+      enum: ['active', 'paused', 'solved', 'completed', 'abandoned'],
       default: 'active',
     },
     timeElapsedSec: {

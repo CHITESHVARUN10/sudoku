@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../auth/AuthContext";
 import { fadeUp, staggerParent, staggerChild } from "../components/motion/presets";
 import useReducedMotion from "../components/three/useReducedMotion";
-import { SudokuCube, GridLattice } from "../components/three/lazy";
+import { SudokuCube } from "../components/three/lazy";
 
 function RegisterPage() {
   const { user, register } = useAuth();
@@ -50,7 +50,7 @@ function RegisterPage() {
           >
             <SudokuCube
               reducedMotion={reducedMotion}
-              className="absolute inset-0 w-full h-full opacity-60"
+              className="absolute inset-0 w-full h-full opacity-90"
             />
             <motion.div className="max-w-md relative z-10" variants={staggerChild}>
               <h1 className="font-display-lg text-display-lg tracking-[0.2em] uppercase mb-4">
@@ -61,13 +61,8 @@ function RegisterPage() {
               </p>
             </motion.div>
           </motion.div>
-          {/* Right Panel */}
+          {/* Right Panel — global SudokuBackground provides the backdrop */}
           <div className="flex flex-col justify-center items-center w-full lg:w-1/2 bg-surface p-margin-md md:p-margin-lg relative overflow-hidden">
-            <GridLattice
-              reducedMotion={reducedMotion}
-              className="absolute inset-0 w-full h-full"
-              style={{ opacity: 0.15 }}
-            />
             <motion.div
               className="w-full max-w-[360px] relative z-10"
               variants={fadeUp}

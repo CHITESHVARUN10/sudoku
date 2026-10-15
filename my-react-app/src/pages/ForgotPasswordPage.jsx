@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { useAuth } from "../auth/AuthContext";
 import { fadeUp, staggerParent, staggerChild } from "../components/motion/presets";
 import useReducedMotion from "../components/three/useReducedMotion";
-import { SudokuCube, GridLattice } from "../components/three/lazy";
+import { SudokuCube } from "../components/three/lazy";
 
 function ForgotPasswordPage() {
   const { forgotPassword } = useAuth();
@@ -39,7 +39,7 @@ function ForgotPasswordPage() {
       >
         <SudokuCube
           reducedMotion={reducedMotion}
-          className="absolute inset-0 w-full h-full opacity-60"
+          className="absolute inset-0 w-full h-full opacity-90"
         />
         <motion.div variants={staggerChild} className="relative z-10">
           <h1 className="font-display-lg text-[48px] uppercase tracking-widest text-surface">
@@ -57,11 +57,7 @@ function ForgotPasswordPage() {
 
       {/* Right Panel */}
       <main className="bg-surface w-full md:w-1/2 flex items-center justify-center p-margin-md md:p-margin-lg relative z-10 overflow-hidden">
-        <GridLattice
-          reducedMotion={reducedMotion}
-          className="absolute inset-0 w-full h-full"
-          style={{ opacity: 0.15 }}
-        />
+        {/* Global SudokuBackground provides the lattice backdrop */}
         <motion.div
           className="w-full max-w-[360px] relative z-10"
           variants={fadeUp}

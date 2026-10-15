@@ -53,6 +53,8 @@
   --color-outline: #75777e;
   --color-on-surface: #1b1c19;
   --color-on-secondary-fixed-variant: #474746;
+  /* Wrong-answer tint used by both board palettes. */
+  --color-wrong-red: #c43f3f;
 
   /* Fonts */
   --font-display-lg: "EB Garamond", serif;
@@ -106,36 +108,105 @@
   --spacing-margin-lg: 64px;
   --spacing-cell-size: 64px;
 
-  /* Shadows */
-  --shadow-hard: 4px 4px 0px 0px rgba(26, 26, 26, 1);
-  --shadow-hard-sm: 2px 2px 0px 0px rgba(26, 26, 26, 1);
+  /* Shadows — hard-offset editorial shadows follow the ink token */
+  --shadow-hard: 4px 4px 0px 0px var(--color-ink-black);
+  --shadow-hard-sm: 2px 2px 0px 0px var(--color-ink-black);
+}
+
+/* ---------------------------------------------------------------------------
+   Dark theme — the design is two-tone (paper vs ink), so the whole palette
+   inverts by swapping the anchor tokens: backgrounds darken, "ink" lightens,
+   the accent and secondary colors get light-safe variants. Every component
+   below consumes tokens via var(...), so this block is the only override.
+--------------------------------------------------------------------------- */
+html.dark {
+  --color-background: #171714;
+  --color-paper-white: #171714;
+  --color-surface: #1d1d1a;
+  --color-surface-bright: #1d1d1a;
+  --color-surface-dim: #121210;
+  --color-surface-container-lowest: #151511;
+  --color-surface-container-low: #201f1b;
+  --color-surface-container: #23231f;
+  --color-surface-container-high: #262622;
+  --color-surface-container-highest: #2b2b26;
+  --color-surface-variant: #262622;
+  --color-secondary-container: #2b2b26;
+  --color-secondary-fixed: #2b2b26;
+  --color-surface-tint: #3b4a66;
+  --color-ink-black: #f0eee6;
+  --color-on-surface: #f2f1ea;
+  --color-on-background: #f2f1ea;
+  --color-on-surface-variant: #a8a5a0;
+  --color-on-secondary-fixed: #f2f1ea;
+  --color-note-gray: #b5b2ac;
+  --color-ink-blue: #9db4d8;
+  --color-primary: #9db4d8;
+  --color-primary-container: #223047;
+  --color-on-primary: #171714;
+  --color-on-primary-fixed: #e9eef8;
+  --color-on-primary-container: #b4c4e2;
+  --color-inverse-primary: #223047;
+  --color-inverse-surface: #f2f1ea;
+  --color-inverse-on-surface: #171714;
+  --color-outline: #8f9098;
+  --color-outline-variant: #3c3c37;
+  --color-wrong-red: #d06464;
+  --color-error: #e09090;
+  --color-error-red: #d05555;
+  --color-error-container: #451313;
+  --color-on-error: #171714;
+  --color-on-error-container: #e0b4b2;
+  --color-secondary: #a9a7a5;
+  --color-primary-fixed: #223047;
+  --color-primary-fixed-dim: #223047;
+  --color-secondary-fixed-variant: #474746;
+  --color-on-secondary-container: #b5b2ac;
+  --color-tertiary: #dfc38e;
+  --color-tertiary-container: #45331a;
+  --color-on-tertiary: #171714;
+  --color-on-tertiary-container: #e5cf9d;
+  --color-tertiary-fixed: #45331a;
+  --color-tertiary-fixed-dim: #45331a;
 }
 
 body {
-  background-color: #f7f5f0;
-  color: #1a1a1a;
+  background-color: var(--color-paper-white);
+  color: var(--color-ink-black);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 /* Setup page grid background */
 .grid-bg {
-  background-image: linear-gradient(to right, #e2dfde 1px, transparent 1px),
-    linear-gradient(to bottom, #e2dfde 1px, transparent 1px);
+  background-image: linear-gradient(
+      to right,
+      var(--color-secondary-container) 1px,
+      transparent 1px
+    ),
+    linear-gradient(to bottom, var(--color-secondary-container) 1px, transparent 1px);
   background-size: 32px 32px;
 }
 
 /* Faint 64px grid background (register page) */
 .grid-bg-64 {
-  background-image: linear-gradient(to right, rgba(26, 26, 26, 0.05) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(26, 26, 26, 0.05) 1px, transparent 1px);
+  background-image: linear-gradient(
+      to right,
+      color-mix(in srgb, var(--color-ink-black) 5%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--color-ink-black) 5%, transparent) 1px,
+      transparent 1px
+    );
   background-size: 64px 64px;
 }
 
 /* Editorial underline inputs (login page) */
 .editorial-input {
   border: none;
-  border-bottom: 1px solid #1a1a1a;
+  border-bottom: 1px solid var(--color-ink-black);
   border-radius: 0;
   padding-left: 0;
   padding-right: 0;
@@ -145,13 +216,13 @@ body {
 .editorial-input:focus {
   outline: none;
   box-shadow: none;
-  border-bottom: 2px solid #2b3a55;
+  border-bottom: 2px solid var(--color-ink-blue);
 }
 
 /* Underline inputs (account settings) */
 .input-underline {
   border: none;
-  border-bottom: 1px solid #1a1a1a;
+  border-bottom: 1px solid var(--color-ink-black);
   background: transparent;
   padding: 8px 0;
   width: 100%;
@@ -161,22 +232,22 @@ body {
 }
 
 .input-underline:focus {
-  border-bottom: 2px solid #1a1a1a;
+  border-bottom: 2px solid var(--color-ink-black);
 }
 
 /* Segmented buttons (account settings difficulty) */
 .segmented-btn {
-  border: 1px solid #1a1a1a;
+  border: 1px solid var(--color-ink-black);
   border-right: none;
 }
 
 .segmented-btn:last-child {
-  border-right: 1px solid #1a1a1a;
+  border-right: 1px solid var(--color-ink-black);
 }
 
 .segmented-btn.active {
-  background-color: #1a1a1a;
-  color: #f7f5f0;
+  background-color: var(--color-ink-black);
+  color: var(--color-paper-white);
 }
 
 /* Blinking cursor (waiting room) */
@@ -197,39 +268,42 @@ body {
 /* Hairline border utilities */
 .border-hairline {
   border-width: 1px;
-  border-color: #1a1a1a;
+  border-color: var(--color-ink-black);
 }
 
 .border-t-hairline {
   border-top-width: 1px;
-  border-color: #1a1a1a;
+  border-color: var(--color-ink-black);
 }
 
 .border-b-hairline {
   border-bottom-width: 1px;
-  border-color: #1a1a1a;
+  border-color: var(--color-ink-black);
 }
 
 .border-l-hairline {
   border-left-width: 1px;
-  border-color: #1a1a1a;
+  border-color: var(--color-ink-black);
 }
 
 .border-r-hairline {
   border-right-width: 1px;
-  border-color: #1a1a1a;
+  border-color: var(--color-ink-black);
 }
 
 /* Multiplayer setup modal grid background */
 .bg-grid-pattern {
-  background-image: linear-gradient(#e4e2dd 1px, transparent 1px),
-    linear-gradient(90deg, #e4e2dd 1px, transparent 1px);
+  background-image: linear-gradient(
+      var(--color-surface-container-highest) 1px,
+      transparent 1px
+    ),
+    linear-gradient(90deg, var(--color-surface-container-highest) 1px, transparent 1px);
   background-size: 64px 64px;
 }
 
 /* Hard shadow (2px version used by the multiplayer modal) */
 .hard-shadow {
-  box-shadow: 2px 2px 0px 0px #1a1a1a;
+  box-shadow: 2px 2px 0px 0px var(--color-ink-black);
 }
 
 /* Single-player sudoku grid */
@@ -237,12 +311,12 @@ body {
   display: grid;
   grid-template-columns: repeat(9, minmax(0, 1fr));
   gap: 1px;
-  background-color: #1a1a1a;
-  border: 2px solid #1a1a1a;
+  background-color: var(--color-ink-black);
+  border: 2px solid var(--color-ink-black);
 }
 
 .sudoku-cell {
-  background-color: #f7f5f0;
+  background-color: var(--color-paper-white);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -251,12 +325,12 @@ body {
 }
 
 .sudoku-cell:nth-child(3n) {
-  border-right: 2px solid #1a1a1a;
+  border-right: 2px solid var(--color-ink-black);
 }
 
 .sudoku-cell:nth-child(n + 19):nth-child(-n + 27),
 .sudoku-cell:nth-child(n + 46):nth-child(-n + 54) {
-  border-bottom: 2px solid #1a1a1a;
+  border-bottom: 2px solid var(--color-ink-black);
 }
 
 .sudoku-grid .sudoku-cell:nth-child(9n) {
@@ -264,39 +338,39 @@ body {
 }
 
 .sudoku-cell.selected {
-  background-color: rgba(43, 58, 85, 0.1);
-  outline: 1px solid #2b3a55;
+  background-color: color-mix(in srgb, var(--color-ink-blue) 10%, transparent);
+  outline: 1px solid var(--color-ink-blue);
   outline-offset: -1px;
   z-index: 10;
 }
 
 .sudoku-cell.fixed {
-  color: #1a1a1a;
+  color: var(--color-ink-black);
   font-weight: 700;
   cursor: default;
 }
 
 .sudoku-cell.user-input {
-  color: #2b3a55;
+  color: var(--color-ink-blue);
 }
 
 /* Move feedback tints — match the multiplayer palette (blue = correct, red = wrong) */
 .sudoku-cell.correct {
-  background-color: rgba(43, 58, 85, 0.18);
-  color: #2b3a55;
+  background-color: color-mix(in srgb, var(--color-ink-blue) 18%, transparent);
+  color: var(--color-ink-blue);
 }
 
 .sudoku-cell.correct.selected {
-  background-color: rgba(43, 58, 85, 0.3);
+  background-color: color-mix(in srgb, var(--color-ink-blue) 30%, transparent);
 }
 
 .sudoku-cell.wrong {
-  background-color: rgba(196, 63, 63, 0.18);
-  color: #c43f3f;
+  background-color: color-mix(in srgb, var(--color-wrong-red) 18%, transparent);
+  color: var(--color-wrong-red);
 }
 
 .sudoku-cell.wrong.selected {
-  background-color: rgba(196, 63, 63, 0.3);
+  background-color: color-mix(in srgb, var(--color-wrong-red) 30%, transparent);
 }
 
 /* Pencil marks (notes) rendered as a compact 3x3 digit grid */
@@ -308,38 +382,38 @@ body {
   height: 100%;
   font-size: 11px;
   line-height: 1;
-  color: #7a7875;
+  color: var(--color-note-gray);
   align-items: center;
   justify-items: center;
 }
 
 /* Multiplayer sudoku grid */
 .mp-sudoku-grid {
-  border: 2px solid #1a1a1a;
+  border: 2px solid var(--color-ink-black);
   display: grid;
   grid-template-columns: repeat(9, 1fr);
   grid-template-rows: repeat(9, 1fr);
   width: fit-content;
-  background-color: #f7f5f0;
+  background-color: var(--color-paper-white);
 }
 
 .mp-sudoku-cell {
   width: 64px;
   height: 64px;
-  border-right: 1px solid #1a1a1a;
-  border-bottom: 1px solid #1a1a1a;
+  border-right: 1px solid var(--color-ink-black);
+  border-bottom: 1px solid var(--color-ink-black);
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: "JetBrains Mono", monospace;
   font-size: 28px;
-  color: #1a1a1a;
+  color: var(--color-ink-black);
   position: relative;
   cursor: pointer;
 }
 
 .mp-sudoku-cell:nth-child(3n) {
-  border-right: 2px solid #1a1a1a;
+  border-right: 2px solid var(--color-ink-black);
 }
 
 .mp-sudoku-cell:nth-child(9n) {
@@ -348,7 +422,7 @@ body {
 
 .mp-sudoku-grid > div:nth-child(n + 19):nth-child(-n + 27),
 .mp-sudoku-grid > div:nth-child(n + 46):nth-child(-n + 54) {
-  border-bottom: 2px solid #1a1a1a;
+  border-bottom: 2px solid var(--color-ink-black);
 }
 
 .mp-sudoku-grid > div:nth-last-child(-n + 9) {
@@ -356,23 +430,23 @@ body {
 }
 
 .mp-sudoku-cell:hover {
-  background-color: rgba(43, 58, 85, 0.05);
+  background-color: color-mix(in srgb, var(--color-ink-blue) 5%, transparent);
 }
 
 .mp-sudoku-cell.selected {
-  border: 1px solid #2b3a55;
-  background-color: rgba(43, 58, 85, 0.1);
+  border: 1px solid var(--color-ink-blue);
+  background-color: color-mix(in srgb, var(--color-ink-blue) 10%, transparent);
   z-index: 10;
 }
 
 .mp-sudoku-cell.user-input {
-  color: #2b3a55;
+  color: var(--color-ink-blue);
 }
 
 /* Multiplayer cell feedback: blue = correct/locked, red = wrong */
 .mp-sudoku-cell.locked {
-  background-color: rgba(43, 58, 85, 0.18);
-  color: #2b3a55;
+  background-color: color-mix(in srgb, var(--color-ink-blue) 18%, transparent);
+  color: var(--color-ink-blue);
   cursor: default;
 }
 
@@ -382,21 +456,21 @@ body {
 }
 
 .mp-sudoku-cell.wrong {
-  background-color: rgba(196, 63, 63, 0.18);
-  color: #c43f3f;
+  background-color: color-mix(in srgb, var(--color-wrong-red) 18%, transparent);
+  color: var(--color-wrong-red);
 }
 
 /* View-only ghost: opponent solved correctly, you haven't filled it yet.
    Faint '?' — selectable, overwritten when you place your own value. */
 .mp-ghost {
-  color: #7a7875;
+  color: var(--color-note-gray);
   font-weight: 400;
   font-size: 20px;
   pointer-events: none;
 }
 
 .mp-sudoku-cell.ghost {
-  background-color: rgba(122, 120, 117, 0.08);
+  background-color: color-mix(in srgb, var(--color-note-gray) 8%, transparent);
 }
 
 /* Legacy shared-board ghost kept as no-op for old payloads. */
@@ -405,11 +479,11 @@ body {
 }
 
 .mp-sudoku-cell.locked.selected {
-  background-color: rgba(43, 58, 85, 0.3);
+  background-color: color-mix(in srgb, var(--color-ink-blue) 30%, transparent);
 }
 
 .mp-sudoku-cell.wrong.selected {
-  background-color: rgba(196, 63, 63, 0.3);
+  background-color: color-mix(in srgb, var(--color-wrong-red) 30%, transparent);
 }
 
 /* Inline-block so the framer pop scale animation on a mark has a layout box. */
@@ -423,15 +497,15 @@ body {
   grid-template-rows: repeat(3, 1fr);
   font-size: 12px;
   line-height: 1;
-  color: #7a7875;
+  color: var(--color-note-gray);
   padding: 2px;
 }
 
 /* Multiplayer numpad button */
 .numpad-btn {
-  border: 1px solid #1a1a1a;
-  background-color: #f7f5f0;
-  color: #1a1a1a;
+  border: 1px solid var(--color-ink-black);
+  background-color: var(--color-paper-white);
+  color: var(--color-ink-black);
   font-family: "JetBrains Mono", monospace;
   font-size: 24px;
   width: 64px;
@@ -444,8 +518,8 @@ body {
 }
 
 .numpad-btn:hover {
-  background-color: #1a1a1a;
-  color: #f7f5f0;
+  background-color: var(--color-ink-black);
+  color: var(--color-paper-white);
 }
 
 /* Move history scrollbar */
@@ -454,33 +528,40 @@ body {
 }
 
 .move-history::-webkit-scrollbar-track {
-  background: #f7f5f0;
-  border-left: 1px solid #1a1a1a;
+  background: var(--color-paper-white);
+  border-left: 1px solid var(--color-ink-black);
 }
 
 .move-history::-webkit-scrollbar-thumb {
-  background: #1a1a1a;
+  background: var(--color-ink-black);
 }
 
 /* ---------------------------------------------------------------------------
    Hero sudoku board — one flat 9x9 grid, tilted by a single container
    transform. No per-cell 3D; the whole plane rotates as one unit.
+   Depth is faked with a hard editorial offset shadow + emphasized 3x3
+   separators + a couple of accent cells so it reads as a real board,
+   not a flat pencil sketch.
 --------------------------------------------------------------------------- */
 
 .hero-sudoku-tilt {
   /* The one and only 3D transform — applied to the container, never cells. */
   transform: perspective(1000px) rotateY(-15deg) rotateX(5deg);
   transform-style: preserve-3d;
-  /* Very slow drift: ±2deg rotateY over 9s. Static tilt for reduced motion. */
+  filter: drop-shadow(0 0 0 transparent);
+  /* Very slow drift: ±3deg rotateY + subtle lift over 9s. */
   animation: hero-tilt-drift 9s ease-in-out infinite alternate;
+  /* Hard-offset editorial shadow under the tilted plane. */
+  box-shadow: 10px 12px 0 0 color-mix(in srgb, var(--color-ink-black) 55%, transparent),
+    10px 12px 0 6px color-mix(in srgb, var(--color-ink-blue) 55%, transparent);
 }
 
 @keyframes hero-tilt-drift {
   from {
-    transform: perspective(1000px) rotateY(-17deg) rotateX(5deg);
+    transform: perspective(1000px) rotateY(-18deg) rotateX(6deg) translateZ(0);
   }
   to {
-    transform: perspective(1000px) rotateY(-13deg) rotateX(5deg);
+    transform: perspective(1000px) rotateY(-12deg) rotateX(4deg) translateZ(10px);
   }
 }
 
@@ -495,38 +576,55 @@ body {
   display: grid;
   grid-template-columns: repeat(9, 1fr);
   gap: 1px;
-  background-color: #1a1a1a; /* shows through the 1px gaps as hairlines */
-  border: 2px solid #1a1a1a;
+  background-color: var(--color-ink-black); /* shows through the 1px gaps as hairlines */
+  border: 3px solid var(--color-ink-black);
+  outline: 1px solid var(--color-ink-black);
   width: 100%;
   aspect-ratio: 1;
 }
 
 .hero-sudoku-cell {
-  background-color: #f7f5f0;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-surface-container-low) 60%, var(--color-paper-white)),
+    var(--color-paper-white)
+  );
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: "JetBrains Mono", monospace;
   font-size: clamp(14px, 2.6vw, 26px);
   font-weight: 700;
-  color: #1a1a1a;
+  color: var(--color-ink-black);
   line-height: 1;
 }
 
-/* Thick right borders after every 3rd cell (3x3 block separators) */
+/* Thicker right borders after every 3rd cell (3x3 block separators) */
 .hero-sudoku-cell:nth-child(3n) {
-  border-right: 2px solid #1a1a1a;
+  border-right: 2px solid var(--color-ink-black);
 }
 
-/* Thick bottom borders under rows 3 and 6 (block separators) */
+/* Thicker bottom borders under rows 3 and 6 (block separators) */
 .hero-sudoku-cell:nth-child(n + 19):nth-child(-n + 27),
 .hero-sudoku-cell:nth-child(n + 46):nth-child(-n + 54) {
-  border-bottom: 2px solid #1a1a1a;
+  border-bottom: 2px solid var(--color-ink-black);
 }
 
 /* No extra right border on the last column */
 .hero-sudoku-cell:nth-child(9n) {
   border-right: none;
+}
+
+/* Accent cells — a deterministic "recently placed" highlight derived from
+   the sample puzzle (see HeroSudokuBoard.jsx cellAccent map). */
+.hero-sudoku-cell.accent {
+  background: var(--color-ink-blue);
+  color: var(--color-surface);
+}
+
+.hero-sudoku-cell.next {
+  outline: 2px solid var(--color-wrong-red);
+  outline-offset: -2px;
 }
 
 /* ---------------------------------------------------------------------------
@@ -537,6 +635,6 @@ body {
 .focus-outline-none:focus-visible,
 button:focus-visible,
 a:focus-visible {
-  outline: 2px solid #2b3a55;
+  outline: 2px solid var(--color-ink-blue);
   outline-offset: 2px;
 }

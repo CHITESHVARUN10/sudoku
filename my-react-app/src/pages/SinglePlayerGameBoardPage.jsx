@@ -5,6 +5,7 @@ import { DIFFICULTY_BANDS } from "../config/difficulty";
 import { usePractice } from "../contexts/PracticeContext";
 import { useDaily } from "../contexts/DailyContext";
 import Navbar from "../components/Navbar";
+import useKeyboardSudoku from "../hooks/useKeyboardSudoku";
 
 function formatTime(sec) {
   const m = String(Math.floor(sec / 60)).padStart(2, "0");
@@ -15,7 +16,7 @@ function formatTime(sec) {
 function SinglePlayerGameBoardPage() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { resumeGame, makeMove, requestHint, fetchActiveGame, undoGame, abandonGame, saveNotes } =
+  const { resumeGame, makeMove, requestHint, fetchActiveGame, abandonGame, saveNotes } =
     usePractice();
   const { startDailyGame } = useDaily();
   const cfg = location.state || {};
@@ -32,6 +33,7 @@ function SinglePlayerGameBoardPage() {
   const [board, setBoard] = useState(null);
   const [feedback, setFeedback] = useState({}); // idx -> 'correct' | 'wrong'
   const [selected, setSelected] = useState(null);
+  const [lastCell, setLastCell] = useState(null);
   const [notesMode, setNotesMode] = useState(false);
   const [notes, setNotes] = useState(() => Array.from({ length: 81 }, () => []));
   const [mistakes, setMistakes] = useState(0);
@@ -40,6 +42,7 @@ function SinglePlayerGameBoardPage() {
   const [hintMsg, setHintMsg] = useState("");
   const [powerUpsLeft, setPowerUpsLeft] = useState(powerUpsMax);
   const [solved, setSolved] = useState(false);
+  const [finalStatus, setFinalStatus] = useState(null); // 'solved' | 'completed'
   const [elapsed, setElapsed] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -114,7 +117,8 @@ function SinglePlayerGameBoardPage() {
           Math.max(0, (g.powerUpsTotal || 0) - (g.powerUpsUsed || 0))
         );
         setElapsed(g.timeElapsedSec || 0);
-        setSolved(g.status === "solved");
+        setSolved(g.status === "solved" || g.status === "completed");
+        if (g.status === "completed") setFinalStatus("completed");
         // Restore correct/wrong tints from persisted moves.
         const fb = {};
         for (const m of g.moves || []) {
@@ -135,12 +139,15 @@ function SinglePlayerGameBoardPage() {
     };
   }, [gameId, resumeGame]);
 
-  // Elapsed timer while playing.
+  // Elapsed timer while playing. Depend on a stable boolean, not the board
+  // array itself — setBoard() creates a fresh array every move, which used to
+  // tear down and recreate the interval (losing up to ~1s of tick per move).
+  const boardLoaded = board != null;
   useEffect(() => {
-    if (solved || !board) return;
+    if (solved || !boardLoaded) return;
     const interval = setInterval(() => setElapsed((e) => e + 1), 1000);
     return () => clearInterval(interval);
-  }, [solved, board]);
+  }, [solved, boardLoaded]);
 
   // Debounced persistence of pencil marks.
   const notesRef = useRef(notes);
@@ -152,28 +159,6 @@ function SinglePlayerGameBoardPage() {
     }, 500);
     return () => clearTimeout(t);
   }, [notes, gameId, saveNotes]);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center font-body-md text-body-md text-ink-black">
-        Loading game…
-      </div>
-    );
-  }
-
-  if (error || !board) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center font-body-md text-body-md text-ink-black gap-4">
-        <p className="text-error-red">{error || "Game not found."}</p>
-        <Link
-          to="/practice"
-          className="border-2 border-ink-black px-4 py-2 hover:bg-ink-black hover:text-paper-white transition-colors"
-        >
-          Back to Setup
-        </Link>
-      </div>
-    );
-  }
 
   const isFixed = (idx) => puzzle[idx] != null;
 
@@ -196,10 +181,19 @@ function SinglePlayerGameBoardPage() {
         return next;
       });
       if (value != null) {
+        // Selection intentionally cleared only after a confirmed placement,
+        // so a rejected move (e.g. a locked cell) keeps the cell selected.
+        setSelected(null);
         setLastDelta({ value: res.delta ?? 0, correct: res.correct });
         setTimeout(() => setLastDelta(null), 1200);
       }
-      if (res.solved) setSolved(true);
+      if (res.solved) {
+        setSolved(true);
+        setFinalStatus("solved");
+      } else if (res.status === "completed") {
+        setSolved(true);
+        setFinalStatus("completed");
+      }
     } catch (err) {
       setMoveError(err.message || "Failed to record move.");
     }
@@ -207,13 +201,21 @@ function SinglePlayerGameBoardPage() {
 
   const handleCellClick = (idx) => {
     if (solved) return;
-    if (isFixed(idx)) return;
+    // Given cells are selectable so rows/columns can be visually scanned;
+    // input into them is still blocked in applyValue/handleNumpad.
     setSelected(idx);
+    setLastCell(idx);
     setHintMsg("");
   };
 
   const handleNumpad = (value) => {
-    if (solved || selected == null) return;
+    if (solved || selected == null || isFixed(selected)) return;
+    // Permanent placement: a filled cell (correct or wrong) rejects new
+    // input without a backend round-trip. The server enforces this too.
+    if (board[selected] != null) {
+      setMoveError("Answers are permanent — placed numbers cannot be changed.");
+      return;
+    }
     if (notesMode) {
       setNotes((cur) => {
         const next = [...cur];
@@ -225,7 +227,6 @@ function SinglePlayerGameBoardPage() {
       });
     } else {
       applyValue(selected, value);
-      setSelected(null);
     }
   };
 
@@ -241,45 +242,29 @@ function SinglePlayerGameBoardPage() {
       setBoard(res.board);
       setFeedback((fb) => ({ ...fb, [selected]: "correct" }));
       setPowerUpsLeft((p) => Math.max(0, p - 1));
-      if (res.solved) setSolved(true);
+      if (res.solved) {
+        setSolved(true);
+        setFinalStatus("solved");
+      }
     } catch (err) {
       setMoveError(err.message || "Failed to use hint.");
     }
     setSelected(null);
   };
 
-  const handleUndo = async () => {
-    setMoveError("");
-    try {
-      const res = await undoGame(gameId);
-      setBoard(res.board);
-      setScore(res.score);
-      setMistakes(res.mistakes);
-      setPowerUpsLeft(
-        Math.max(0, powerUpsMax - (res.powerUpsUsed ?? 0))
-      );
-      // Rebuild correct/wrong tints from the persisted move history.
-      const fb = {};
-      for (const m of res.moves || []) {
-        if (m.correct != null && !m.isPowerUp) {
-          fb[m.cell] = m.correct ? "correct" : "wrong";
-        }
-        if (m.isPowerUp && m.correct) fb[m.cell] = "correct";
-      }
-      setFeedback(fb);
-    } catch (err) {
-      setMoveError(err.message || "Nothing to undo.");
-    }
-  };
-
   const handleErase = () => {
     if (selected == null || isFixed(selected)) return;
+    if (solved) return;
+    if (board[selected] != null) {
+      setMoveError("Answers are permanent — placed numbers cannot be erased.");
+      return;
+    }
+    if (!notes[selected] || notes[selected].length === 0) return;
     setNotes((cur) => {
       const next = [...cur];
       next[selected] = [];
       return next;
     });
-    applyValue(selected, null);
   };
 
   const handleEndPractice = async () => {
@@ -297,6 +282,75 @@ function SinglePlayerGameBoardPage() {
       setMoveError(err.message || "Failed to end game.");
     }
   };
+
+  // Keyboard controls: digits 1-9 place, Backspace/Delete/0 = erase attempt,
+  // arrows move the selection (givens included), Enter re-selects the previous
+  // cell, N/Space toggles notes, Escape deselects.
+  const handleKeyboardDigit = (value) => {
+    if (loading || error || !board) return;
+    handleNumpad(value);
+  };
+
+  const handleKeyboardErase = () => {
+    if (loading || error || !board) return;
+    handleErase();
+  };
+
+  const moveSelection = (dir) => {
+    if (solved || selected == null) return;
+    const row = Math.floor(selected / 9);
+    const col = selected % 9;
+    let next = null;
+    if (dir === "up" && row > 0) next = selected - 9;
+    else if (dir === "down" && row < 8) next = selected + 9;
+    else if (dir === "left" && col > 0) next = selected - 1;
+    else if (dir === "right" && col < 8) next = selected + 1;
+    if (next != null) {
+      setSelected(next);
+      setLastCell(next);
+      setHintMsg("");
+    }
+  };
+
+  const handleKeyboardEnter = () => {
+    if (solved || loading || error) return;
+    if (selected == null && lastCell != null) {
+      setSelected(lastCell);
+      setHintMsg("");
+    }
+  };
+
+  useKeyboardSudoku({
+    onDigit: handleKeyboardDigit,
+    onErase: handleKeyboardErase,
+    onArrow: moveSelection,
+    onEnter: handleKeyboardEnter,
+    onToggleNotes: () => setNotesMode((m) => !m),
+    onEscape: () => setSelected(null),
+    enabled: board != null && !solved && !loading && !error,
+  });
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center font-body-md text-body-md text-ink-black">
+        Loading game…
+      </div>
+    );
+  }
+
+  if (error || !board) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center font-body-md text-body-md text-ink-black gap-4">
+        <p className="text-error-red">{error || "Game not found."}</p>
+        <Link
+          to="/practice"
+          className="border-2 border-ink-black px-4 py-2 hover:bg-ink-black hover:text-paper-white transition-colors"
+        >
+          Back to Setup
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col font-body-md text-body-md text-ink-black antialiased">
@@ -343,7 +397,10 @@ function SinglePlayerGameBoardPage() {
                 className="mb-4 border-2 border-ink-black bg-ink-black text-paper-white p-4 font-label-mono text-label-mono uppercase tracking-widest"
                 role="status"
               >
-                Solved! Score {score} · {formatTime(elapsed)} · {mistakes}{" "}
+                {finalStatus === "completed"
+                  ? "All cells filled!"
+                  : "Solved!"}{" "}
+                Score {score} · {formatTime(elapsed)} · {mistakes}{" "}
                 mistakes
                 <button
                   onClick={() => navigate("/practice")}
@@ -374,11 +431,9 @@ function SinglePlayerGameBoardPage() {
                 const isSel = selected === index;
                 const isFixedCell = isFixed(index);
                 const fb = feedback[index];
-                const cls = `sudoku-cell ${
-                  isFixedCell ? "fixed" : ""
-                } ${isSel ? "selected" : ""} ${
+                const cls = `sudoku-cell ${isFixedCell ? "fixed" : ""} ${isSel ? "selected" : ""} ${
                   !isFixedCell && fb ? fb : ""
-                }`;
+                } ${!isFixedCell && !fb && value != null ? "user-input" : ""}`;
                 return (
                   <div
                     key={index}
@@ -415,13 +470,6 @@ function SinglePlayerGameBoardPage() {
             <div className="flex flex-row lg:flex-col justify-around lg:justify-start gap-4">
               <button
                 className="font-body-lg text-body-lg text-ink-black hover:border-b hover:border-ink-black pb-0.5 self-start transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-transparent"
-                onClick={handleUndo}
-                disabled={solved || !board.some((v, i) => v != null && !isFixed(i))}
-              >
-                Undo
-              </button>
-              <button
-                className="font-body-lg text-body-lg text-ink-black hover:border-b hover:border-ink-black pb-0.5 self-start transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-transparent"
                 onClick={handleHint}
                 disabled={solved || powerUpsLeft <= 0}
               >
@@ -430,7 +478,12 @@ function SinglePlayerGameBoardPage() {
               <button
                 className="font-body-lg text-body-lg text-ink-black hover:border-b hover:border-ink-black pb-0.5 self-start transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-transparent"
                 onClick={handleErase}
-                disabled={solved || selected == null || isFixed(selected)}
+                disabled={
+                  solved ||
+                  selected == null ||
+                  isFixed(selected) ||
+                  board[selected] != null
+                }
               >
                 Erase
               </button>

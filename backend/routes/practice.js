@@ -82,10 +82,10 @@ Router.post('/:id/move', async (req, res) => {
         .status(400)
         .json({ success: false, message: 'Cell is a given — cannot change.' });
     }
-    if (value != null && game.board[cell] === game.solution[cell]) {
+    if (game.board[cell] != null) {
       return res
         .status(400)
-        .json({ success: false, message: 'Cell is already correct.' });
+        .json({ success: false, message: 'Cell is locked — answers cannot be changed.' });
     }
 
     const prevValue = game.board[cell] ?? null;
@@ -96,6 +96,7 @@ Router.post('/:id/move', async (req, res) => {
       cell,
       value,
       correct: value == null ? null : correct,
+      solution: game.solution,
     });
     game.board = board;
     game.score += delta;
@@ -124,6 +125,25 @@ Router.post('/:id/move', async (req, res) => {
         mode: game.mode || 'Solo',
         difficulty: game.difficulty,
         result: 'Solved',
+        timeSec: game.timeElapsedSec,
+        movesCount: game.moves.length,
+        mistakes: game.mistakes,
+        score: game.score,
+        eloDelta: 0,
+        powerUpsUsed: game.powerUpsUsed,
+        gameId: game._id,
+      });
+    } else if (game.board.every((v) => v != null)) {
+      // All cells are filled, but some hold permanently locked wrong answers.
+      // The attempt ends here with the final score standing.
+      game.status = 'completed';
+      game.completedAt = new Date();
+
+      await recordGame({
+        userId: req.user._id,
+        mode: game.mode || 'Solo',
+        difficulty: game.difficulty,
+        result: 'Completed',
         timeSec: game.timeElapsedSec,
         movesCount: game.moves.length,
         mistakes: game.mistakes,
@@ -193,6 +213,7 @@ Router.post('/:id/hint', async (req, res) => {
       cell,
       value,
       correct: true,
+      solution: game.solution,
     });
     game.board = board;
     game.score += delta;
@@ -245,7 +266,7 @@ Router.post('/:id/hint', async (req, res) => {
   }
 });
 
-// POST /practice/:id/undo — revert the last move (server-authoritative).
+// POST /practice/:id/undo — disabled: answers are permanent once placed.
 Router.post('/:id/undo', async (req, res) => {
   try {
     if (!req.user) {
@@ -255,35 +276,9 @@ Router.post('/:id/undo', async (req, res) => {
     if (!game || String(game.user) !== String(req.user._id)) {
       return res.status(404).json({ success: false, message: 'Game not found.' });
     }
-    if (game.status !== 'active') {
-      return res
-        .status(400)
-        .json({ success: false, message: 'Game is not active.' });
-    }
-    const last = game.moves[game.moves.length - 1];
-    if (!last) {
-      return res
-        .status(400)
-        .json({ success: false, message: 'No move to undo.' });
-    }
-
-    game.moves.pop();
-    game.board[last.cell] = last.prevValue ?? null;
-    game.score -= last.delta || 0;
-    if (last.isPowerUp) game.powerUpsUsed = Math.max(0, game.powerUpsUsed - 1);
-    if (last.correct === false) game.mistakes = Math.max(0, game.mistakes - 1);
-
-    await game.save();
-
-    return res.json({
-      success: true,
-      board: game.board,
-      score: game.score,
-      mistakes: game.mistakes,
-      moves: game.moves,
-      powerUpsUsed: game.powerUpsUsed,
-      status: game.status,
-    });
+    return res
+      .status(400)
+      .json({ success: false, message: 'Answers are permanent — undo is disabled.' });
   } catch (err) {
     return res
       .status(500)

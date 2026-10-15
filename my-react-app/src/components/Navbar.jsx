@@ -2,9 +2,11 @@ import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../auth/AuthContext";
+import useTheme from "../hooks/useTheme";
 
 function Navbar() {
   const { user, logout } = useAuth();
+  const { isDark, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -22,6 +24,19 @@ function Navbar() {
     }`;
 
   const closeMenu = () => setMenuOpen(false);
+
+  const themeToggle = (
+    <button
+      onClick={toggleTheme}
+      className="p-1 text-secondary hover:text-ink-blue transition-colors cursor-pointer"
+      aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+      title={isDark ? "Light mode" : "Dark mode"}
+    >
+      <span className="material-symbols-outlined text-[20px]">
+        {isDark ? "light_mode" : "dark_mode"}
+      </span>
+    </button>
+  );
 
   const links = (
     <>
@@ -86,6 +101,7 @@ function Navbar() {
         <div className="hidden md:flex gap-8 items-center">
           {links}
           {authLinks}
+          {themeToggle}
         </div>
         <button
           className="md:hidden p-2 text-ink-black"
@@ -111,6 +127,7 @@ function Navbar() {
           >
             {links}
             {authLinks}
+            <div className="pt-1">{themeToggle}</div>
           </motion.div>
         )}
       </AnimatePresence>

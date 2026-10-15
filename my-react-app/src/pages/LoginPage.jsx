@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../auth/AuthContext";
 import { fadeUp, staggerParent, staggerChild } from "../components/motion/presets";
 import useReducedMotion from "../components/three/useReducedMotion";
-import { SudokuCube, GridLattice } from "../components/three/lazy";
+import { SudokuCube } from "../components/three/lazy";
 
 function LoginPage() {
   const { user, login } = useAuth();
@@ -46,7 +46,7 @@ function LoginPage() {
         {/* Floating 3D cube accent behind the panel text. */}
         <SudokuCube
           reducedMotion={reducedMotion}
-          className="absolute inset-0 w-full h-full opacity-60"
+          className="absolute inset-0 w-full h-full opacity-90"
         />
         <motion.div variants={staggerChild} className="relative z-10">
           <h1 className="font-display-lg text-[48px] uppercase tracking-widest text-surface">
@@ -63,12 +63,8 @@ function LoginPage() {
       </motion.div>
       {/* Right Panel (Main Content Canvas) */}
       <main className="bg-surface w-full md:w-1/2 flex items-center justify-center p-margin-md md:p-margin-lg relative z-10 overflow-hidden">
-        {/* Faint lattice behind the form. */}
-        <GridLattice
-          reducedMotion={reducedMotion}
-          className="absolute inset-0 w-full h-full"
-          style={{ opacity: 0.15 }}
-        />
+        {/* Faint lattice behind the form — the global SudokuBackground already
+            provides it, no local duplicate needed. */}
         <motion.div
           className="w-full max-w-[360px] relative z-10"
           variants={fadeUp}

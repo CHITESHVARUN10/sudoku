@@ -1,10 +1,10 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
+import { currentPalette, watchTheme } from "./threeTheme";
 
-const INK_BLUE = "#2b3a55";
-
-// Large ink-blue wireframe lattice plane drifting/rotating very slowly.
-// Designed to sit behind content at low opacity — never noisy.
+// Sudoku-motif backdrop: a wide lattice of hairlines with every 3rd line
+// emphasized (3x3 blocks), faded into the page with fog so the plane has no
+// visible edges. Slow continuous spin + tiny mouse parallax.
 function GridLattice({ reducedMotion = false, style = {}, className = "" }) {
   const mountRef = useRef(null);
 
@@ -20,25 +20,72 @@ function GridLattice({ reducedMotion = false, style = {}, className = "" }) {
     renderer.setSize(width, height);
     mount.appendChild(renderer.domElement);
 
+    const palette = currentPalette();
+
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
-    camera.position.set(0, 0, 9);
+    scene.fog = new THREE.Fog(palette.surface, 10, 22);
+
+    const camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 100);
+    camera.position.set(0, 0, 10);
 
     const group = new THREE.Group();
+    group.rotation.x = 0.55;
+    group.rotation.z = 0.35;
     scene.add(group);
 
-    // A wide grid of thin lines, slightly tilted for depth.
-    const gridGeo = new THREE.PlaneGeometry(16, 16, 16, 16);
-    const grid = new THREE.LineSegments(
-      new THREE.EdgesGeometry(gridGeo),
-      new THREE.LineBasicMaterial({
-        color: INK_BLUE,
-        transparent: true,
-        opacity: 0.35,
-      })
-    );
-    group.add(grid);
-    gridGeo.dispose();
+    // Lattice: lines every 1 unit across 44 units — far beyond the viewport,
+    // so nothing but fog is ever visible at the edges of the screen.
+    const half = 22;
+    const thinMat = new THREE.LineBasicMaterial({
+      color: palette.line,
+      transparent: true,
+      opacity: darkSafeOpacity(palette.dark, 0.35),
+    });
+    const blockMat = new THREE.LineBasicMaterial({
+      color: palette.line,
+      transparent: true,
+      opacity: darkSafeOpacity(palette.dark, 0.75),
+    });
+
+    const thin = [];
+    const block = [];
+    for (let i = -half; i <= half; i++) {
+      const arr = Math.abs(i) % 3 === 0 ? block : thin;
+      arr.push(-half, i, 0, half, i, 0); // horizontal
+      arr.push(i, -half, 0, i, half, 0); // vertical
+    }
+    const thinGeo = toGeometry(thin);
+    const blockGeo = toGeometry(block);
+    group.add(new THREE.LineSegments(thinGeo, thinMat));
+    group.add(new THREE.LineSegments(blockGeo, blockMat));
+
+    function toGeometry(points) {
+      const geo = new THREE.BufferGeometry();
+      const buf = new Float32Array(points);
+      geo.setAttribute("position", new THREE.BufferAttribute(buf, 3));
+      return geo;
+    }
+
+    function darkSafeOpacity(dark, lightOpacity) {
+      return dark ? lightOpacity + 0.15 : lightOpacity;
+    }
+
+    // Mouse parallax — subtle, lerped.
+    let targetX = 0;
+    let targetY = 0;
+    const onPointerMove = (e) => {
+      targetY = (e.clientX / window.innerWidth - 0.5) * 0.12;
+      targetX = (e.clientY / window.innerHeight - 0.5) * -0.08;
+    };
+    if (!reducedMotion) {
+      window.addEventListener("pointermove", onPointerMove);
+    }
+
+    const unwatch = watchTheme((next) => {
+      thinMat.color.set(next.line);
+      blockMat.color.set(next.line);
+      scene.fog.color.set(next.surface);
+    });
 
     let raf = 0;
     const clock = new THREE.Clock();
@@ -47,8 +94,9 @@ function GridLattice({ reducedMotion = false, style = {}, className = "" }) {
       const delta = clock.getDelta();
       const t = clock.elapsedTime;
       if (!reducedMotion) {
-        group.rotation.x = 0.45 + Math.sin(t * 0.1) * 0.05;
-        group.rotation.z += delta * 0.015;
+        group.rotation.z += delta * 0.05; // one continuous slow spin
+        group.rotation.x = 0.55 + Math.sin(t * 0.25) * 0.06 - targetX;
+        group.rotation.y = targetY;
       }
       renderer.render(scene, camera);
       raf = requestAnimationFrame(tick);
@@ -68,6 +116,12 @@ function GridLattice({ reducedMotion = false, style = {}, className = "" }) {
     return () => {
       cancelAnimationFrame(raf);
       resizeObserver.disconnect();
+      unwatch();
+      window.removeEventListener("pointermove", onPointerMove);
+      thinGeo.dispose();
+      blockGeo.dispose();
+      thinMat.dispose();
+      blockMat.dispose();
       renderer.dispose();
       if (renderer.domElement.parentNode === mount) {
         mount.removeChild(renderer.domElement);

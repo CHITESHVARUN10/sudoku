@@ -119,6 +119,24 @@ function ghostMaskForSeat(match, viewerSeat) {
   return mask;
 }
 
+// End-of-match checks after a seat writes a cell: full correct board wins;
+// otherwise a board with NO empty cells ends the match and the winner is
+// decided by score (tie-break: fewer mistakes, then more clock), inline with
+// the ratified resign-accept rule.
+async function checkSeatEnd(io, match, player) {
+  if (isBoardSolvedForSeat(match, player)) {
+    await endMatch(io, match, player, 'solved');
+    return true;
+  }
+  const b = boardForSeat(match, player);
+  if (b.every((v) => v != null)) {
+    const winner = decideResignWinner(match);
+    await endMatch(io, match, winner, 'all-filled');
+    return true;
+  }
+  return false;
+}
+
 async function fetchMatchPlayers(match) {
   const [p1, p2] = await Promise.all([
     User.findById(match.player1).select('name elo'),
@@ -342,7 +360,17 @@ async function endMatch(io, match, winnerPlayer, reason, opts = {}) {
     eloDeltaLoser: loserDelta,
   });
 
-  await Room.updateOne({ _id: match.room }, { status: 'started' });
+  // Return the room to the TTL lifecycle once the match is over — before
+  // this it was status 'started' with expiresAt null, which leaked forever.
+  if (match.room) {
+    await Room.updateOne(
+      { _id: match.room },
+      {
+        status: 'cancelled',
+        expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+      }
+    );
+  }
 }
 
 function attachSocket(server) {
@@ -616,14 +644,11 @@ function attachSocket(server) {
           }
           ensureBoards(match);
           const ownBoard = boardForSeat(match, player);
-          // Locked correct cells on OWN board cannot be changed; wrong cells on
-          // own board can be overwritten (player corrects their mistake).
-          if (
-            ownBoard[cell] != null &&
-            ownBoard[cell] === match.solution[cell]
-          ) {
+          // PERMANENT PLACEMENT: once a digit is placed on the own board
+          // (right or wrong) the cell is locked forever.
+          if (ownBoard[cell] != null) {
             socket.emit('error', {
-              message: 'That cell is already correct.',
+              message: 'Cell is locked — answers cannot be changed.',
             });
             return;
           }
@@ -636,6 +661,7 @@ function attachSocket(server) {
             cell,
             value,
             correct,
+            solution: match.solution,
           });
 
           setBoardForSeat(match, player, next);
@@ -654,10 +680,7 @@ function attachSocket(server) {
           match.lastMoveAt = new Date();
           await match.save();
 
-          if (isBoardSolvedForSeat(match, player)) {
-            await endMatch(io, match, player, 'solved');
-            return;
-          }
+          if (await checkSeatEnd(io, match, player)) return;
           emitMatchState(io, match);
         } catch (err) {
           console.error('match:move error:', err);
@@ -698,12 +721,10 @@ function attachSocket(server) {
             return;
           }
           const ownBoard = boardForSeat(match, player);
-          if (
-            ownBoard[cell] != null &&
-            ownBoard[cell] === match.solution[cell]
-          ) {
+          // PERMANENT PLACEMENT: cannot reveal onto an already-written cell.
+          if (ownBoard[cell] != null) {
             socket.emit('error', {
-              message: 'That cell is already correct.',
+              message: 'Cell is locked — answers cannot be changed.',
             });
             return;
           }
@@ -719,6 +740,7 @@ function attachSocket(server) {
             cell,
             value: res.value,
             correct: true,
+            solution: match.solution,
           });
           setBoardForSeat(match, player, _next);
 
@@ -734,10 +756,7 @@ function attachSocket(server) {
           match.lastMoveAt = new Date();
           await match.save();
 
-          if (isBoardSolvedForSeat(match, player)) {
-            await endMatch(io, match, player, 'solved');
-            return;
-          }
+          if (await checkSeatEnd(io, match, player)) return;
           emitMatchState(io, match);
         } catch (err) {
           console.error('match:powerup error:', err);
@@ -746,39 +765,43 @@ function attachSocket(server) {
     });
 
     // Persist a player's pencil marks (81-cell array of note sets).
-    socket.on('match:notes', async ({ matchId, userId, notes }) => {
-      try {
-        const authedId = socketUserId(socket);
-        if (!authedId || String(authedId) !== String(userId)) {
-          socket.emit('error', { message: 'Not authenticated.' });
-          return;
+    // Serialized through the match queue like match:move — an unserialized
+    // save could clobber a move applied concurrently.
+    socket.on('match:notes', ({ matchId, userId, notes }) => {
+      enqueueMatchOp(matchId, async () => {
+        try {
+          const authedId = socketUserId(socket);
+          if (!authedId || String(authedId) !== String(userId)) {
+            socket.emit('error', { message: 'Not authenticated.' });
+            return;
+          }
+          const match = await Match.findById(matchId);
+          if (!match || match.status !== 'active') return;
+          const player =
+            String(match.player1) === String(userId)
+              ? 1
+              : String(match.player2) === String(userId)
+              ? 2
+              : 0;
+          if (!player) return;
+          if (
+            !Array.isArray(notes) ||
+            notes.length !== 81 ||
+            notes.some((set) => !Array.isArray(set))
+          ) {
+            socket.emit('error', { message: 'Notes must be an 81-cell array.' });
+            return;
+          }
+          const key = player === 1 ? 'p1' : 'p2';
+          match.notes[key] = notes.map((set) =>
+            [...new Set(set)].filter((n) => n >= 1 && n <= 9)
+          );
+          await match.save();
+          emitMatchState(io, match);
+        } catch (err) {
+          console.error('match:notes error:', err);
         }
-        const match = await Match.findById(matchId);
-        if (!match || match.status !== 'active') return;
-        const player =
-          String(match.player1) === String(userId)
-            ? 1
-            : String(match.player2) === String(userId)
-            ? 2
-            : 0;
-        if (!player) return;
-        if (
-          !Array.isArray(notes) ||
-          notes.length !== 81 ||
-          notes.some((set) => !Array.isArray(set))
-        ) {
-          socket.emit('error', { message: 'Notes must be an 81-cell array.' });
-          return;
-        }
-        const key = player === 1 ? 'p1' : 'p2';
-        match.notes[key] = notes.map((set) =>
-          [...new Set(set)].filter((n) => n >= 1 && n <= 9)
-        );
-        await match.save();
-        emitMatchState(io, match);
-      } catch (err) {
-        console.error('match:notes error:', err);
-      }
+      });
     });
 
     socket.on('match:resign', async ({ matchId, userId }) => {
@@ -969,13 +992,17 @@ function attachSocket(server) {
     });
   });
 
-  // Sweep active timed matches so clocks tick (and timeouts fire) even when
-  // neither player makes a move.
+  // Sweep active matches so state stays consistent even when neither player
+  // makes a move: clocks tick for timed matches, and stale resign requests
+  // expire in both timed and untimed ones.
   setInterval(async () => {
     try {
       const matches = await Match.find({
         status: 'active',
-        timerMinPerPlayer: { $gt: 0 },
+        $or: [
+          { timerMinPerPlayer: { $gt: 0 } },
+          { resignRequestedBy: { $ne: null } },
+        ],
       });
       for (const match of matches) {
         await enqueueMatchOp(match._id, async () => {
