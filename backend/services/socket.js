@@ -374,9 +374,14 @@ async function endMatch(io, match, winnerPlayer, reason, opts = {}) {
 }
 
 function attachSocket(server) {
+  // Same permissive CORS policy as the HTTP API: any origin by default
+  // (dynamic EC2 IPs, plain-HTTP frontends), optional CORS_ORIGIN allowlist.
+  const corsOrigin = process.env.CORS_ORIGIN
+    ? process.env.CORS_ORIGIN.split(',').map((o) => o.trim())
+    : true;
   const io = new Server(server, {
     cors: {
-      origin: true,
+      origin: corsOrigin,
       methods: ['GET', 'POST'],
       credentials: true,
     },

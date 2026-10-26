@@ -1,7 +1,12 @@
+// Load environment variables BEFORE any other module reads process.env —
+// session.js/socket.js read NODE_ENV, SECRET_KEY and MONGODB_URI at require
+// time, so dotenv must run first.
+const dotenv = require('dotenv');
+dotenv.config();
+
 const express = require('express');
 const http = require('http');
 const app = express();
-const dotenv = require('dotenv');
 const cors = require('cors');
 
 // Enable trust proxy for cloud platforms (Render, Railway, Heroku)
@@ -9,9 +14,6 @@ app.set('trust proxy', 1);
 const { sessionMiddleware, passport } = require('./middleware/session');
 const connectDB = require('./db');
 const { attachSocket } = require('./services/socket');
-
-// Load environment variables
-dotenv.config();
 
 const PORT = process.env.PORT || 5000;
 
@@ -22,7 +24,13 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 // Standard Express Middlewares
-app.use(cors({ origin: true, credentials: true }));
+// CORS: reflect ANY origin by default so the API works from dynamic IPs
+// (EC2 instances that stop/start) and plain-HTTP frontends. Set CORS_ORIGIN
+// to a comma-separated allowlist if a deployment ever needs locking down.
+const corsOrigin = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(',').map((o) => o.trim())
+  : true;
+app.use(cors({ origin: corsOrigin, credentials: true }));
 app.use(express.json()); // Parses incoming JSON requests
 app.use(express.urlencoded({ extended: true })); // Parses URL-encoded data
 

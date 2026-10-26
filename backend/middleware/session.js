@@ -8,6 +8,20 @@ const MongoStore = connectMongo.MongoStore || connectMongo.default;
 
 const isProduction = process.env.NODE_ENV === 'production';
 
+// Secure cookies require HTTPS. Default: on in production, off locally.
+// COOKIE_SECURE=false keeps sessions working on plain-HTTP deployments
+// (e.g. demo servers without a TLS certificate).
+const secureCookie =
+  process.env.COOKIE_SECURE != null
+    ? process.env.COOKIE_SECURE === 'true'
+    : isProduction;
+
+// Cross-site frontends (different domain/port) need SameSite=None, but
+// browsers reject that combination unless the cookie is also Secure — so
+// fall back to Lax whenever the cookie cannot be secure.
+let sameSite = process.env.COOKIE_SAMESITE || (secureCookie ? 'none' : 'lax');
+if (!secureCookie && sameSite === 'none') sameSite = 'lax';
+
 const sessionMiddleware = session({
   secret: process.env.SECRET_KEY || 'your-secret-key',
   resave: false,
@@ -20,9 +34,8 @@ const sessionMiddleware = session({
     touchAfter: 24 * 3600, // reduce writes (seconds)
   }),
   cookie: {
-    // In production (Vercel <-> Render cross-domain), sameSite: 'none' and secure: true are required
-    secure: isProduction ? true : process.env.COOKIE_SECURE === 'true',
-    sameSite: isProduction ? 'none' : 'lax',
+    secure: secureCookie,
+    sameSite,
     maxAge: 24 * 60 * 60 * 1000, // 24 hours
   },
 });

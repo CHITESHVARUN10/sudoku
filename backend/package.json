@@ -1,6 +1,7 @@
 {
   "name": "backend",
   "version": "1.0.0",
+  "packageManager": "pnpm@10.28.0",
   "scripts": {
     "start": "node index.js",
     "dev": "NODE_ENV=development node index.js"
